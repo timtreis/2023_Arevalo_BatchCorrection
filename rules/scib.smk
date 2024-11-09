@@ -1,7 +1,7 @@
 SCIB_METRICS = [
-    "nmi",
-    "ari",
-    # "asw",
+    #"nmi",
+    #"ari",
+    #"asw",
     "silhouette_batch",
     "pcr_batch",
     "pcr",
@@ -22,6 +22,14 @@ rule scib_all:
             "outputs/{{scenario}}/metrics/{{criteria}}/scib/{{pipeline}}_asw_{key}.bin",
             key=config["eval_key"],
         ),
+        expand(
+            "outputs/{{scenario}}/metrics/{{criteria}}/scib/{{pipeline}}_ari_{key}.bin",
+            key=config["eval_key"],
+        ),
+        expand(
+            "outputs/{{scenario}}/metrics/{{criteria}}/scib/{{pipeline}}_nmi_{key}.bin",
+            key=config["eval_key"],
+        ),
     output:
         output_path="outputs/{scenario}/metrics/{criteria}/{pipeline}_scib.parquet",
     run:
@@ -39,24 +47,24 @@ rule clustering:
 
 rule nmi:
     input:
-        "outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_clusters.h5ad",
+        parquet_path="outputs/{prefix}/{pipeline}.parquet",
     output:
-        "outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_nmi.bin",
+        nmi_path="outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_nmi_{key}.bin",
     params:
-        label_key=config["label_key"],
+        label_key="{key}",
     run:
-        metrics.scib.nmi(*input, *params, *output)
+        metrics.scib.nmi(input.parquet_path, params.label_key, output.nmi_path)
 
 
 rule ari:
     input:
-        "outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_clusters.h5ad",
+        parquet_path="outputs/{prefix}/{pipeline}.parquet",
     output:
-        "outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_ari.bin",
+        ari_path="outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_ari_{key}.bin",
     params:
-        label_key=config["label_key"],
+        label_key="{key}",
     run:
-        metrics.scib.ari(*input, *params, *output)
+        metrics.scib.ari(input.parquet_path, params.label_key, output.ari_path)
 
 
 rule asw:

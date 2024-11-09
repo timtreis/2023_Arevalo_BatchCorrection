@@ -5,7 +5,14 @@ configfile: "./inputs/conf/scenario_6.json"
 WORKFLOWS = [
     "mad_int_featselect",
 ]
+
+# Only include Harmony and DESC in the METHODS list
 METHODS = [
+    "harmony"
+]
+
+
+"""METHODS = [
     "scanorama",
     "fastMNN",
     "mnn",
@@ -18,7 +25,7 @@ METHODS = [
     "sphering",
     "seurat_cca",
     "seurat_rpca",
-]
+]"""
 
 
 # Load rules

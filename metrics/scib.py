@@ -6,7 +6,7 @@ import anndata as ad
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, adjusted_rand_score, normalized_mutual_info_score
 
 from preprocessing.io import split_parquet, to_anndata
 
@@ -59,16 +59,46 @@ def cluster(parquet_path, adata_path):
     adata.write_h5ad(adata_path, compression='gzip')
 
 
-def nmi(adata_path, label_key, nmi_path):
-    adata = ad.read_h5ad(adata_path)
-    nmi = metrics.nmi(adata, label_key, CLUSTER_KEY)
-    np.array(nmi).tofile(nmi_path)
+def nmi(parquet_path, eval_key, nmi_path):
+    meta, feats, _ = filter_dmso(parquet_path)
+    meta = _add_moa_info(meta)
+
+    if eval_key not in meta.columns:
+        raise ValueError(f"Eval key '{eval_key}' not in metadata")
+
+    meta = meta.reset_index(drop=True)
+    feats_df = pd.DataFrame(feats)
+    feats_df = feats_df.reset_index(drop=True)
+
+    merged_df = pd.concat([meta, feats_df], axis=1)
+    merged_df = merged_df[merged_df[eval_key].notna()].copy()
+    feature_cols = feats_df.columns
+    merged_df = merged_df.dropna(subset=feature_cols)
+
+    # Compute here NMI
+    nmi_score = normalized_mutual_info_score(merged_df[eval_key].values, merged_df[eval_key].values)
+    np.array([nmi_score]).tofile(nmi_path)
 
 
-def ari(adata_path, label_key, ari_path):
-    adata = ad.read_h5ad(adata_path)
-    ari = metrics.ari(adata, label_key, CLUSTER_KEY)
-    np.array(ari).tofile(ari_path)
+def ari(parquet_path, eval_key, ari_path):
+    meta, feats, _ = filter_dmso(parquet_path)
+    meta = _add_moa_info(meta)
+
+    if eval_key not in meta.columns:
+        raise ValueError(f"Eval key '{eval_key}' not in metadata")
+
+    meta = meta.reset_index(drop=True)
+    feats_df = pd.DataFrame(feats)
+    feats_df = feats_df.reset_index(drop=True)
+
+    merged_df = pd.concat([meta, feats_df], axis=1)
+    merged_df = merged_df[merged_df[eval_key].notna()].copy()
+    feature_cols = feats_df.columns
+    merged_df = merged_df.dropna(subset=feature_cols)
+
+    # Compute Adjusted Rand Index
+    ari_score = adjusted_rand_score(merged_df[eval_key].values, merged_df[eval_key].values)
+    np.array([ari_score]).tofile(ari_path)
 
 
 def asw(parquet_path, eval_key, asw_path):
@@ -218,12 +248,27 @@ def lisi_batch(adata_path, batch_key, lisi_batch_path):
 
 def concat(*metric_paths, output_path):
     '''Concatenate scib metrics in a single file'''
+    
     # Extract metric names from path
     start = len(os.path.commonprefix(metric_paths))
     end = -len('.bin')
     metrics = map(lambda x: x[start:end], metric_paths)
 
     # Concat metric values
-    scores = np.fromiter(map(np.fromfile, metric_paths), dtype=np.float32)
-    dframe = pd.DataFrame({'metric': metrics, 'score': scores})
+    debug_output_file = "./debug_output.txt"
+    
+    with open(debug_output_file, "a") as debug_file:
+        scores = []
+        for path in metric_paths:
+            data = np.fromfile(path, dtype=np.float32)
+            debug_file.write(f"{path}: {data}\n")
+            
+            if data.size == 1:
+                scores.append(data[0])  # Only a single value
+            elif data.size > 1:
+                scores.append(data[0])  # First value (mean/median, etc. instead???)
+            else:
+                raise ValueError(f"File {path} contains no data.")
+    
+    dframe = pd.DataFrame({'metric': list(metrics), 'score': scores})
     dframe.to_parquet(output_path)

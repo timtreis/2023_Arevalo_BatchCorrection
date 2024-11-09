@@ -1,0 +1,33 @@
+Traceback (most recent call last):
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/scripts/correct_with_sysvi.py", line 3, in <module>
+    from scvi.external import SysVI
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/__init__.py", line 11, in <module>
+    from . import data, model, external, utils
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/data/__init__.py", line 4, in <module>
+    from ._datasets import (
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/data/_datasets.py", line 8, in <module>
+    from ._built_in_data._brain_large import _load_brainlarge_dataset
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/data/_built_in_data/_brain_large.py", line 9, in <module>
+    from scvi.data._download import _download
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/data/_download.py", line 7, in <module>
+    from scvi.utils import track
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/utils/__init__.py", line 5, in <module>
+    from ._jax import device_selecting_PRNGKey
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/scvi/utils/_jax.py", line 3, in <module>
+    import jax
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/__init__.py", line 37, in <module>
+    import jax.core as _core
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/core.py", line 18, in <module>
+    from jax._src.core import (
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/_src/core.py", line 39, in <module>
+    from jax._src import dtypes
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/_src/dtypes.py", line 33, in <module>
+    from jax._src import config
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/_src/config.py", line 27, in <module>
+    from jax._src import lib
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/_src/lib/__init__.py", line 75, in <module>
+    version = check_jaxlib_version(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/ictstr01/home/icb/mahima.arunkumar/hiwi/2023_Arevalo_BatchCorrection/env_store/930266105c8ed0e95af5a5e8a58cc719_/lib/python3.11/site-packages/jax/_src/lib/__init__.py", line 67, in check_jaxlib_version
+    raise RuntimeError(
+RuntimeError: jaxlib version 0.4.35 is newer than and incompatible with jax version 0.4.27. Please update your jax and/or jaxlib packages.

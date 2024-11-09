@@ -1,0 +1,29 @@
+2024-11-01 12:40:21,995 - harmonypy - INFO - Computing initial centroids with sklearn.KMeans...
+2024-11-01 12:41:40,571 - harmonypy - INFO - sklearn.KMeans initialization complete.
+2024-11-01 12:41:40,698 - harmonypy - INFO - Iteration 1 of 999999
+2024-11-01 12:41:58,324 - harmonypy - INFO - Iteration 2 of 999999
+2024-11-01 12:42:15,874 - harmonypy - INFO - Iteration 3 of 999999
+2024-11-01 12:42:28,652 - harmonypy - INFO - Iteration 4 of 999999
+2024-11-01 12:42:41,674 - harmonypy - INFO - Iteration 5 of 999999
+2024-11-01 12:42:54,337 - harmonypy - INFO - Iteration 6 of 999999
+2024-11-01 12:43:07,340 - harmonypy - INFO - Iteration 7 of 999999
+2024-11-01 12:43:19,985 - harmonypy - INFO - Iteration 8 of 999999
+2024-11-01 12:43:32,716 - harmonypy - INFO - Iteration 9 of 999999
+2024-11-01 12:43:45,376 - harmonypy - INFO - Iteration 10 of 999999
+2024-11-01 12:43:58,067 - harmonypy - INFO - Iteration 11 of 999999
+2024-11-01 12:44:10,735 - harmonypy - INFO - Iteration 12 of 999999
+2024-11-01 12:44:23,483 - harmonypy - INFO - Iteration 13 of 999999
+2024-11-01 12:44:36,208 - harmonypy - INFO - Iteration 14 of 999999
+2024-11-01 12:44:48,948 - harmonypy - INFO - Iteration 15 of 999999
+2024-11-01 12:45:01,651 - harmonypy - INFO - Iteration 16 of 999999
+2024-11-01 12:45:16,137 - harmonypy - INFO - Iteration 17 of 999999
+2024-11-01 12:45:28,967 - harmonypy - INFO - Iteration 18 of 999999
+2024-11-01 12:45:41,706 - harmonypy - INFO - Iteration 19 of 999999
+2024-11-01 12:45:54,523 - harmonypy - INFO - Iteration 20 of 999999
+2024-11-01 12:46:07,265 - harmonypy - INFO - Iteration 21 of 999999
+2024-11-01 12:46:19,901 - harmonypy - INFO - Iteration 22 of 999999
+2024-11-01 12:46:32,645 - harmonypy - INFO - Iteration 23 of 999999
+2024-11-01 12:46:45,413 - harmonypy - INFO - Iteration 24 of 999999
+2024-11-01 12:46:58,163 - harmonypy - INFO - Iteration 25 of 999999
+2024-11-01 12:47:10,887 - harmonypy - INFO - Iteration 26 of 999999
+2024-11-01 12:47:23,551 - harmonypy - INFO - Converged after 26 iterations
