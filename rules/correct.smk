@@ -1,5 +1,18 @@
 include: "sphering.smk" # not modifying this for now, dependencies are unproblematic
 
+rule aggregate_method_outputs_into_adata:
+    input:
+        unintegrated="outputs/{scenario}/{pipeline}.parquet",
+        integrated=expand(
+            "outputs/{{scenario}}/{{pipeline}}_{method}.parquet",
+            method=METHODS,
+        )
+    output:
+        output_path="outputs/{scenario}/{pipeline}_all_methods.h5ad"
+    run:
+        metrics.scib.aggregate_method_outputs_into_adata(input.unintegrated, input.integrated, output.output_path)
+
+
 rule combat:
     input:
         data="outputs/{scenario}/{pipeline}.parquet",

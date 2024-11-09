@@ -59,6 +59,7 @@ rule prepare_embeddings:
 rule results_table:
     input:
         "outputs/{scenario}/plots/data/pivot_scores.parquet",
+        "outputs/{scenario}/mad_int_featselect_all_methods.h5ad"
     output:
         "outputs/{scenario}/plots/results_table.{ext}",
     run:

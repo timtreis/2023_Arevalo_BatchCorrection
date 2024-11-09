@@ -68,6 +68,25 @@ def cluster(parquet_path, adata_path):
     adata.write_h5ad(adata_path, compression="gzip")
 
 
+def aggregate_method_outputs_into_adata(unintegrated_path, integrated_paths, output_path):
+
+    # extract integration method name from paths
+    base_path = unintegrated_path.replace(".parquet", "")
+    name_path_mapping = {
+        path.replace(f"{base_path}_", "").replace(".parquet", ""): path for path in integrated_paths
+    }
+
+    # make baseline adata and then add integrated embeddings to obsm for scib-metrics
+    unintegrated_adata = to_anndata(unintegrated_path)
+
+    for name, path in name_path_mapping.items():
+        integrated_adata = to_anndata(path).to_df()
+        unintegrated_adata.obsm[name] = integrated_adata
+
+    unintegrated_adata.write_h5ad(output_path, compression="gzip")
+
+
+
 def nmi(adata_path, label_key, nmi_path):
     adata = ad.read_h5ad(adata_path)
     nmi = metrics.nmi(adata, label_key, CLUSTER_KEY)
