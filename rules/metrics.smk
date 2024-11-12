@@ -14,7 +14,11 @@ metrics_pattern = (
 
 rule all_metrics:
     input:
-        "outputs/{scenario}/metrics/{criteria}/{pipeline}_scib.parquet",
+        expand(
+            "outputs/{{scenario}}/metrics/{{criteria}}/{{pipeline}}_scibmetrics_benchmarker_{key}.parquet",
+            key=config["eval_key"],
+
+        ),
         "outputs/{scenario}/metrics/{criteria}/{pipeline}_map_negcon.parquet",
         "outputs/{scenario}/metrics/{criteria}/{pipeline}_map_nonrep.parquet",
     output:

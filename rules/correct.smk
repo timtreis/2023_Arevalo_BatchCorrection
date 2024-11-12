@@ -148,6 +148,8 @@ rule scvi:
         "logs/{scenario}/{pipeline}_scvi.log"
     conda:
         "../envs/scvi.yaml"  
+    resources:
+        nvidia_gpu=1
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
@@ -187,6 +189,8 @@ rule scpoli:
         "logs/{scenario}/{pipeline}_scpoli.log"
     conda:
         "../envs/scpoli.yaml"  
+    resources:
+        nvidia_gpu=1
     params:
         batch_key=config["batch_key"],
         label_key=config["label_key"],

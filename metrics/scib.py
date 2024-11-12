@@ -52,6 +52,10 @@ def filter_dmso(parquet_path):
     return meta, feats, features
 
 
+def run_scibmetrics_benchmarker(adata_path, output_path, eval_keys):
+    print(eval_keys)
+
+
 def cluster(parquet_path, adata_path):
     adata = filter_dmso_anndata(parquet_path)
     logger.info("compute neighbors")
