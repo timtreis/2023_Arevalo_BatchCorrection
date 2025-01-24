@@ -33,7 +33,11 @@ def correct_with_gaushanvi(
 
     # gashanvi setup
     scanvi_model = scvi.model.SCANVI.from_scvi_model(vae, unlabeled_category="unknown")
-    scanvi_model.train(max_epochs=n_epochs)
+    scanvi_model.train(
+        max_epochs=n_epochs,
+        early_stopping=True,
+        early_stopping_monitor="elbo_validation",
+    )
 
     # Get latent representation
     vals = scanvi_model.get_latent_representation()

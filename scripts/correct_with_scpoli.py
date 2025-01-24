@@ -24,7 +24,7 @@ def correct_with_scpoli(
 
     # load hyperparameters
     params = pd.read_csv(parameter_path)
-    params = params.sort_values("total").iloc[0].to_dict()
+    params = params.sort_values("total", ascending=False).iloc[0].to_dict()
 
     if params["state"] != "COMPLETE":
         raise ValueError("Optimization did not complete successfully")
@@ -34,11 +34,11 @@ def correct_with_scpoli(
     eta = params["params_eta"]
     latent_dim = params["params_latent_dim"]
     hidden_layer_sizes = [
-        params[f"params_layer_{i}_size"] for i in range(params["params_num_layers"])
+        int(params[f"params_layer_{i}_size"]) for i in range(params["params_num_layers"])
     ]
     pretrain_to_train_ratio = params["params_pretrain_to_train_ratio"]
 
-    total_epochs = 4 if smoketest else 100
+    total_epochs = 4 if smoketest else 400
     n_pretrain_epochs = 2 if smoketest else int(total_epochs * pretrain_to_train_ratio)
     n_train_epochs = 2 if smoketest else (total_epochs - n_pretrain_epochs)
     n_train_epochs += (0 if smoketest else 9999999) # we train until convergence

@@ -1,6 +1,3 @@
-configfile: "./inputs/conf/scenario_7.json"
-
-
 # Define processing workflows and correction methods to run
 WORKFLOWS = [
     "mad_int_featselect",
@@ -24,6 +21,7 @@ METHODS = [
     "sphering",
     "seurat_cca",
     "seurat_rpca",
+    "cpDistiller",
 ]
 
 

@@ -37,7 +37,8 @@ Every scenario reported in the paper can be reproduced running snakemake with
 the associated config file. For example, to reproduce Scenario 6 using 8 cores:
 
 ```bash
-snakemake -c8 --configfile inputs/conf/scenario_7.json --use-conda --conda-prefix "./env_store/" --resources nvidia_gpu=2
+conda activate /home/icb/tim.treis/miniconda/envs/batchcp
+snakemake -c18 --configfile inputs/conf/scenario_8.json --use-conda --conda-prefix "./env_store/" --resources nvidia_gpu=2
 ```
 
 ```bash
@@ -51,3 +52,5 @@ You can get the scores, corrected profiles and plots in the `./outputs` folder.
 
 ## Learnings
 - constraining GPU ressources is not worth it because we're not maxing out the VRAM for most methods on target2
+    - nevermind, it actually is because with the parameter we basically just limited how many GPUs run concurrently. 
+      That means we can f.e. say we have "2" GPUs to only have two GPU-based integration methods run at the same time.

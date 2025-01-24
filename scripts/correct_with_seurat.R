@@ -6,6 +6,7 @@ suppressPackageStartupMessages({
   library(arrow)
   library(Seurat)
   library(dplyr)
+  library(future)
 })
 
 # Define command-line options
@@ -33,7 +34,7 @@ seurat_method <- opt$method
 output_file <- opt$output_path
 
 # Set future globals size (optional, adjust as needed)
-options(future.globals.maxSize = 12000 * 1024^2)
+options(future.globals.maxSize = 32 * 1024^3)
 
 # Read the input parquet data
 parquet_data <- as.data.frame(read_parquet(input_file))
@@ -45,7 +46,7 @@ features_cols <- col_names[!grepl("^Metadata_", col_names)]
 
 features <- parquet_data[, features_cols]
 metadata <- parquet_data[, metadata_cols]
-batch_info <- parquet_data[[batch_col]]  # Use [[ ]] for column selection
+batch_info <- parquet_data[[batch_col]]  
 
 # Identify unique batches
 batch_names <- unique(batch_info)
@@ -54,7 +55,6 @@ batch_names <- unique(batch_info)
 batches <- split(features, batch_info)
 meta_batches <- split(metadata, batch_info)
 
-# Initialize list to hold Seurat objects
 seurat_lists <- list()
 
 # Iterate over each batch to create Seurat objects
@@ -73,7 +73,6 @@ for (i in seq_along(batches)) {
   # Run PCA (specify features to skip automatic feature selection)
   obj <- RunPCA(obj, features = colnames(raw), verbose = FALSE)
   
-  # Append to the list
   seurat_lists[[i]] <- obj
 }
 

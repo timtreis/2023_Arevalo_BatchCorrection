@@ -22,10 +22,74 @@ with warnings.catch_warnings():
 logger = logging.getLogger(__name__)
 CLUSTER_KEY = "Metadata_Cluster"
 
+def _filter_min_max_members(
+    data: pd.DataFrame,
+    col_to_count: str,
+    min_members: int = 0,
+    max_members: int = 99999, # effectively no max limit
+) -> pd.DataFrame:
+    """Filter out unique categories in `col_to_count` (f.e. MOA/Target) tahat have less than `min_members` or more than `max_members`."""
+    counts = data[col_to_count].value_counts()
+    valid_categories = counts[(counts >= min_members) & (counts <= max_members)].index
+    return data[data[col_to_count].isin(valid_categories)].copy()
 
 def _load_opentargets_moa_info() -> pd.DataFrame:
     # from https://github.com/theislab/jump-integrate-reproducibility/blob/main/experiments/get_moas_from_opentarget/get_moas_from_opentarget.ipynb
     return pd.read_parquet("inputs/metadata/opentargets_moa_target2_eval.parquet")
+
+def _load_repurposinghub_info(
+    data: pd.DataFrame,
+    label_key: str,
+    merge_key: str = "Metadata_InChIKey",
+    drop_other_cols: bool = True,
+    min_compounds_in_label: int = 0,
+    max_compounds_in_label: int = 99999, # effectively no max limit
+) -> pd.DataFrame:
+
+    if merge_key not in data.columns:
+        raise ValueError(f"Key to merge on ('{merge_key}') not found in data.")
+    
+    if drop_other_cols:
+        data = data[[merge_key, label_key]]
+
+    data = _filter_min_max_members(data, label_key, min_compounds_in_label, max_compounds_in_label)
+    
+    return data
+
+def _load_repurposinghub_moa_info(
+    merge_key: str = "Metadata_InChIKey",
+    drop_other_cols: bool = True,
+    min_compounds_in_moa: int = 3,
+    max_compounds_in_moa: int = 50, # arbitrarily chosen based on notebook
+) -> pd.DataFrame:
+    # from https://github.com/theislab/jump-integrate-reproducibility/blob/main/experiments/create_drug_moa_matching/create_drug_moa_matching.ipynb
+    data = pd.read_csv("inputs/metadata/repurposinghub_inchi_to_moa_moaexploded.csv")
+
+    return _load_repurposinghub_info(
+        data,
+        "Metadata_DRH_MOA",
+        merge_key,
+        drop_other_cols,
+        min_compounds_in_moa,
+        max_compounds_in_moa
+    )
+    
+
+def _load_repurposinghub_target_info(
+    merge_key: str = "Metadata_InChIKey",
+    drop_other_cols: bool = True,
+    min_compounds_in_moa: int = 3,
+    max_compounds_in_moa: int = 50, # arbitrarily chosen based on notebook
+) -> pd.DataFrame:
+    # from https://github.com/theislab/jump-integrate-reproducibility/blob/main/experiments/create_drug_moa_matching/create_drug_moa_matching.ipynb
+    data = pd.read_csv("inputs/metadata/repurposinghub_inchi_to_moa_targetexploded.csv")
+    
+    return _load_repurposinghub_info(
+        data,
+        "Metadata_DRH_TARGET",
+        merge_key,
+        drop_other_cols
+    )
 
 def _merge_with_duplication(
     adata: ad.AnnData, 
