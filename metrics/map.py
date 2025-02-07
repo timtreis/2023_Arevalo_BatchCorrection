@@ -140,7 +140,13 @@ def mean_average_precision(
     results = {}
 
     # filter out eval_keys for which we cannot perform mAP calculations
-    eval_keys.remove("Metadata_MOA")
+    for invalid_eval_key in ["Metadata_OT_MOA", "Metadata_DRH_MOA", "Metadata_DRH_TARGET"]:
+        if invalid_eval_key in eval_keys:
+            try:
+                eval_keys.remove(invalid_eval_key)
+                logger.warning(f"Cannot calculate mAP for eval_key '{invalid_eval_key}'. Removing from list.")
+            except ValueError:
+                pass
 
     # iterate over all keys x embeddings and calculate mAP scores
     for eval_key in eval_keys:

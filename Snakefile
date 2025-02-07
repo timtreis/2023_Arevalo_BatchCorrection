@@ -1,6 +1,3 @@
-configfile: "./inputs/conf/scenario_6.json"
-
-
 # Define processing workflows and correction methods to run
 WORKFLOWS = [
     "mad_int_featselect",
@@ -15,12 +12,18 @@ METHODS = [
     "combat",
     "desc",
     "scvi",
-    "sysvi",
+    "sysvi",    
+    "scanvi",
+    "gaushvi",
+    "gaushanvi", 
     "scpoli",
     # "scpoli_pca", # performs quite a bit worse than normal scpoli
     "sphering",
     "seurat_cca",
     "seurat_rpca",
+    # "cpDistiller_B",
+    # "cpDistiller_S",
+    # "cpDistiller_SBP",
 ]
 
 
@@ -31,6 +34,7 @@ include: "rules/metrics.smk"
 include: "rules/correct.smk"
 include: "rules/projection.smk"
 include: "rules/plots.smk"
+include: "rules/tune.smk"
 
 
 rule all:

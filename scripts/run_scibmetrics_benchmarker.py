@@ -4,7 +4,12 @@ import scanpy as sc
 import pandas as pd
 
 from scib_metrics.benchmark import Benchmarker
-from metrics.scib import _load_opentargets_moa_info, _merge_with_duplication
+from metrics.scib import (
+    _merge_with_duplication,
+    _load_opentargets_moa_info,
+    _load_repurposinghub_moa_info,
+    _load_repurposinghub_target_info,
+)
 
 import warnings
 
@@ -28,13 +33,18 @@ def run_scibmetrics_benchmarker(
 
     # iterate over keys and benchmark embeddings
     for eval_key in eval_keys:
-        if eval_key == "Metadata_MOA":
-            moa_meta = _load_opentargets_moa_info()
-            adata_for_eval = _merge_with_duplication(adata.copy(), moa_meta)
 
-            # subset adata to drugs with MOA info
+        eval_key_function_mapping = {
+            "Metadata_OT_MOA": _load_opentargets_moa_info,
+            "Metadata_DRH_MOA": _load_repurposinghub_moa_info,
+            "Metadata_DRH_TARGET": _load_repurposinghub_target_info,
+        }
+
+        if eval_key in eval_key_function_mapping:
+            meta = eval_key_function_mapping[eval_key]()
+            print(meta)
+            adata_for_eval = _merge_with_duplication(adata.copy(), meta)
             adata_for_eval = adata_for_eval[~adata_for_eval.obs[eval_key].isna()].copy()
-
         else:
             adata_for_eval = adata.copy()
 
