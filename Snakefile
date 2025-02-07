@@ -21,7 +21,9 @@ METHODS = [
     "sphering",
     "seurat_cca",
     "seurat_rpca",
-    "cpDistiller",
+    # "cpDistiller_B",
+    # "cpDistiller_S",
+    # "cpDistiller_SBP",
 ]
 
 
