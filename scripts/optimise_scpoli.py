@@ -6,36 +6,11 @@ from preprocessing import io
 import pandas as pd
 import anndata as ad
 import optuna
-from scib_metrics.benchmark import Benchmarker
 from scarches.models.scpoli import scPoli
 
+from utils import scib_benchmark_embedding
+
 logger = logging.getLogger(__name__)
-
-def scib_benchmark_embedding(
-    adata: ad.AnnData,
-    batch_key: str,
-    label_key: str,
-) -> float:
-    adata.obsm["trial"] = adata.X
-
-    # silence output
-    sys.stdout = open(os.devnull, "w")
-
-    bm = Benchmarker(
-        adata=adata,
-        batch_key=batch_key,
-        label_key=label_key,
-        embedding_obsm_keys=["trial"],
-    )
-    bm.benchmark()
-    df = bm.get_results(min_max_scale=False)
-
-    # restore output
-    sys.stdout.close()
-    sys.stdout = sys.__stdout__
-
-    return df.loc["trial"][["Batch correction", "Bio conservation"]].values
-
 
 def objective(
     trial,
@@ -66,6 +41,12 @@ def objective(
     alpha_epoch_anneal = trial.suggest_int("alpha_epoch_anneal", 100, 1000, step=100)
     eta = trial.suggest_float("eta", 0.1, 1.0, step=0.1)
 
+    if isinstance(batch_key, list) and len(batch_key) == 1 and "," in batch_key[0]:
+        batch_key = batch_key[0].split(",")
+
+    if isinstance(batch_key, str):
+        batch_key = batch_key.split(",") if "," in batch_key else [batch_key]
+
     model = scPoli(
         adata=adata,
         condition_keys=batch_key,
@@ -95,7 +76,7 @@ def objective(
 
     batch, bio = scib_benchmark_embedding(
         adata=integrated_adata,
-        batch_key=batch_key, 
+        batch_key=batch_key[0], # we can only use one key here
         label_key=label_key
     )
 

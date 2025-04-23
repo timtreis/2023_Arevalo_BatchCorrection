@@ -1,8 +1,7 @@
 wildcard_constraints:
     criteria=r"target2|prod",
-    scenario=r"scenario_\d",
+    scenario=r"scenario_[a-zA-Z0-9]+",
     pipeline=r"[_a-zA-Z.~0-9\-]*",
-
 
 # Init config
 import os

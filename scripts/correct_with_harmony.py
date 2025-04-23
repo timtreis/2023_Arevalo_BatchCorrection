@@ -3,23 +3,54 @@ import logging
 from harmonypy import run_harmony
 from preprocessing import io
 import scanpy as sc
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+def _load_hyperparameters(parameter_path):
+    params = pd.read_csv(parameter_path)
+    params = params.sort_values("total", ascending=False).iloc[0].to_dict()
+
+    if params["state"] != "COMPLETE":
+        raise ValueError("Optimization did not complete successfully")
+
+    sigma  = params["params_sigma"]
+    theta  = params["params_theta"]
+    lamb   = params["params_lamb"]
+    nclust = int(params["params_nclust"])
+    tau    = params["params_tau"]
+
+    print("\nUsing the following hyperparameters for Harmony:")
+    print(f"- sigma: {sigma}")
+    print(f"- theta: {theta}")
+    print(f"- lamb: {lamb}")
+    print(f"- nclust: {nclust}")
+    print(f"- tau: {tau}\n")
+
+    return sigma, theta, lamb, nclust, tau
 
 def correct_with_harmony(
-    dframe_path: str, batch_key: list, output_path: str, smoketest=False
+    dframe_path: str,
+    batch_key: list,
+    output_path: str, 
+    parameter_path: str,
+    smoketest=False
 ):
     """Harmony correction"""
     n_max_iter = 2 if smoketest else 999999
+    sigma, theta, lamb, nclust, tau = _load_hyperparameters(parameter_path)
 
     meta, feats, features = io.split_parquet(dframe_path)
     harmony_out = run_harmony(
-        feats,
-        meta,
-        batch_key,
+        data_mat=feats,
+        meta_data=meta,
+        vars_use=batch_key,
+        theta=theta,
+        lamb=lamb,
+        sigma=sigma,
         max_iter_harmony=n_max_iter,
-        nclust=300,  # Number of compounds
+        nclust=nclust,
+        tau=tau,
     )
 
     feats = harmony_out.Z_corr.T
@@ -64,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_path", required=True, help="Path to save corrected data."
     )
+    parser.add_argument("--parameter_path", required=True, help="Path to the parameter file")
     parser.add_argument(
         "--smoketest",
         action="store_true",
@@ -77,6 +109,7 @@ if __name__ == "__main__":
             dframe_path=args.input_data,
             batch_key=args.batch_key,
             output_path=args.output_path,
+            parameter_path=args.parameter_path,
             smoketest=args.smoketest,
         )
     elif args.mode == "harmony_pca":
@@ -84,6 +117,7 @@ if __name__ == "__main__":
             dframe_path=args.input_data,
             batch_key=args.batch_key,
             output_path=args.output_path,
+            parameter_path=args.parameter_path,
             smoketest=args.smoketest,
         )
     else:

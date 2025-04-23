@@ -1,14 +1,21 @@
 name: batchcp_correct_scvi
 channels:
+  - nvidia
+  - pytorch
   - conda-forge
 dependencies:
-  - anndata
-  - cudatoolkit
-  - pandas
   - pip=24.0
-  - pytorch>=2.0.0=*_cuda*
-  - python
-  - scanpy
-  - pyarrow
-  - scvi-tools
-  - jaxlib>=0.4.26
+  - python=3.11
+  - cudatoolkit=11.8
+  - pip:
+    - anndata>=0.10
+    - pandas
+    - scanpy
+    - pyarrow
+    - jax[cuda12]
+    - jax-cuda12-pjrt
+    - jax-cuda12-plugin
+    - optuna
+    - scvi-tools>=1.1.0 # after this, a bug in scANVI was fixed
+    - torchmetrics
+    - scib-metrics

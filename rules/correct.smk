@@ -13,7 +13,8 @@ rule aggregate_method_outputs_into_adata:
 rule methods_combat:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_combat.py"
+        script="scripts/correct_with_combat.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_combat.parquet"
     log:
@@ -29,6 +30,7 @@ rule methods_combat:
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
+            --parameter_path '{input.parameter_path}' \
             --batch_key '{params.batch_key}' \
             --output_path '{output.path}' \
             &> '{log}'
@@ -65,7 +67,8 @@ rule methods_sphering:
 rule methods_harmony:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_harmony.py"
+        script="scripts/correct_with_harmony.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_harmony.parquet"
     log:
@@ -84,6 +87,7 @@ rule methods_harmony:
             --mode 'harmony' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
@@ -218,14 +222,15 @@ rule methods_desc:
             &> '{log}'
         """
 
-rule methods_scvi:
+rule methods_scvi_single:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_scvi.py"
+        script="scripts/correct_with_scvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_scvi_single.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_scvi.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_scvi_single.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scvi.log"
+        "logs/{scenario}/" + config["preproc"] + "_correct_scvi_single.log"
     conda:
         "../envs/scvi.yaml"
     params:
@@ -241,6 +246,38 @@ rule methods_scvi:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+rule methods_scvi_multi:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_scvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_scvi_multi.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_scvi_multi.parquet"
+    log:
+        "logs/{scenario}/" + config["preproc"] + "_correct_scvi_multi.log"
+    conda:
+        "../envs/scvi.yaml"
+    params:
+        batch_key=','.join(config["batch_key"]),
+        label_key=config["label_key"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        nvidia_gpu=1
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --multi \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
@@ -333,7 +370,8 @@ rule methods_gaushanvi:
 rule methods_sysvi:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_sysvi.py"
+        script="scripts/correct_with_sysvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_sysvi.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_sysvi.parquet"
     log:
@@ -353,6 +391,7 @@ rule methods_sysvi:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
