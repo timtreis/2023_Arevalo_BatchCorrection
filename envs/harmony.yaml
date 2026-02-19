@@ -10,3 +10,9 @@ dependencies:
   - scanpy
   - numpy
   - pyarrow
+  - pip:
+    - optuna
+    - scib-metrics
+    - jax
+    - jax-cuda12-pjrt
+    - jax-cuda12-plugin 

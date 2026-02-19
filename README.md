@@ -9,45 +9,45 @@ We suggest [Mamba](https://github.com/conda-forge/miniforge#mambaforge) for
 environment management. The following commands create the environment from
 scratch and install the required packages.
 
-```bash
+bash
 mamba env create --file environment.yaml
 mamba activate batchcp
-```
+
 
 or if you already have an environment you just want to update:
 
-```bash
+bash
 mamba env update --name batchcp --file environment.yaml --prune
-```
+
 
 ### mnnpy installation
 
-Similarly, `mnnpy` may require manual installation. More info at
+Similarly, mnnpy may require manual installation. More info at
 https://github.com/chriscainx/mnnpy#install
 
 ## Get input data
 
 Download profiles and metadata:
-```bash
+bash
 bash download_data.sh
-```
+
 
 ## Run scenarios
 Every scenario reported in the paper can be reproduced running snakemake with
 the associated config file. For example, to reproduce Scenario 6 using 8 cores:
 
-```bash
+bash
 conda activate /home/icb/tim.treis/miniconda/envs/batchcp
-snakemake -c18 --configfile inputs/conf/scenario_8.json --use-conda --conda-prefix "./env_store/" --resources nvidia_gpu=2
-```
+snakemake -c20 --configfile inputs/conf/scenario_7.json --use-conda --conda-prefix "./env_store/" --resources nvidia_gpu=2
 
-```bash
-snakemake -c8 --configfile inputs/conf/scenario_7.json --use-conda --conda-prefix "./env_store/" --rulegraph > rulegraph.dot
-```
 
-snakemake -c8 --configfile inputs/conf/scenario_6.json --use-conda --conda-prefix "./env_store/" --until results_table
+bash
+snakemake -c8 --configfile inputs/conf/scenario_apricot.json --use-conda --conda-prefix "./env_store/" --rulegraph > rulegraph.dot
 
-You can get the scores, corrected profiles and plots in the `./outputs` folder.
+
+snakemake -c8 --configfile inputs/conf/scenario_6.json --use-conda --conda-prefix "./env_store/" --until aggregate_method_outputs_into_adata
+
+You can get the scores, corrected profiles and plots in the ./outputs folder.
 
 
 ## Learnings

@@ -13,11 +13,12 @@ rule aggregate_method_outputs_into_adata:
 rule methods_combat:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_combat.py"
+        script="scripts/correct_with_combat.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_combat.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_combat.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_combat.log"
     conda:
         "../envs/harmony.yaml"  # we only need scanpy so this will do
     params:
@@ -29,6 +30,7 @@ rule methods_combat:
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
+            --parameter_path '{input.parameter_path}' \
             --batch_key '{params.batch_key}' \
             --output_path '{output.path}' \
             &> '{log}'
@@ -41,7 +43,7 @@ rule methods_sphering:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_sphering.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_sphering.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_sphering.log"
     conda:
         "../envs/sphering.yaml"
     params:
@@ -65,11 +67,12 @@ rule methods_sphering:
 rule methods_harmony:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_harmony.py"
+        script="scripts/correct_with_harmony.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_harmony.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_harmony.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_harmony.log"
     conda:
         "../envs/harmony.yaml"
     params:
@@ -84,6 +87,7 @@ rule methods_harmony:
             --mode 'harmony' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
@@ -96,7 +100,7 @@ rule methods_harmony_pca:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_harmony_pca.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_harmony_pca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_harmony_pca.log"
     conda:
         "../envs/harmony.yaml"
     params:
@@ -123,7 +127,7 @@ rule methods_scanorama:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_scanorama.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scanorama.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanorama.log"
     conda:
         "../envs/scanorama.yaml"
     params:
@@ -149,7 +153,7 @@ rule methods_scanorama_pca:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_scanorama_pca.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scanorama_pca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanorama_pca.log"
     conda:
         "../envs/scanorama.yaml"
     params:
@@ -175,7 +179,7 @@ rule methods_mnn:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_mnn.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_mnn.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_mnn.log"
     conda:
         "../envs/mnn.yaml"
     params:
@@ -199,7 +203,7 @@ rule methods_desc:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_desc.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_desc.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_desc.log"
     conda:
         "../envs/desc.yaml"
     params:
@@ -218,14 +222,15 @@ rule methods_desc:
             &> '{log}'
         """
 
-rule methods_scvi:
+rule methods_scvi_single:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_scvi.py"
+        script="scripts/correct_with_scvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_scvi_single.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_scvi.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_scvi_single.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scvi.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scvi_single.log"
     conda:
         "../envs/scvi.yaml"
     params:
@@ -241,19 +246,53 @@ rule methods_scvi:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
         """
 
-rule methods_scanvi:
+rule methods_scvi_multi:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_scvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_scvi_multi.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_scvi_multi.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scvi_multi.log"
+    conda:
+        "../envs/scvi.yaml"
+    params:
+        batch_key=','.join(config["batch_key"]),
+        label_key=config["label_key"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        nvidia_gpu=1
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --multi \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+rule methods_scanvi_single:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        scvi_parameter_path="outputs/{scenario}/optimization/optuna_scvi_single.csv",
+        scanvi_parameter_path="outputs/{scenario}/optimization/optuna_scanvi_single.csv",
         script="scripts/correct_with_scanvi.py"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_scanvi.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_scanvi_single.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scanvi.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanvi_single.log"
     conda:
         "../envs/scvi.yaml"
     params:
@@ -269,6 +308,42 @@ rule methods_scanvi:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
+            --scvi_parameter_path '{input.scvi_parameter_path}' \
+            --scanvi_parameter_path '{input.scanvi_parameter_path}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+
+rule methods_scanvi_multi:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        scvi_parameter_path="outputs/{scenario}/optimization/optuna_scvi_multi.csv",
+        scanvi_parameter_path="outputs/{scenario}/optimization/optuna_scanvi_multi.csv",
+        script="scripts/correct_with_scanvi.py"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_scanvi_multi.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanvi_multi.log"
+    conda:
+        "../envs/scvi.yaml"
+    params:
+        batch_key=','.join(config["batch_key"]),
+        label_key=config["label_key"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        nvidia_gpu=1
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --multi \
+            --scvi_parameter_path '{input.scvi_parameter_path}' \
+            --scanvi_parameter_path '{input.scanvi_parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
@@ -281,7 +356,7 @@ rule methods_gaushvi:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_gaushvi.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_gaushvi.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_gaushvi.log"
     conda:
         "../envs/gaushvi.yaml"
     params:
@@ -309,7 +384,7 @@ rule methods_gaushanvi:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_gaushanvi.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_gaushanvi.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_gaushanvi.log"
     conda:
         "../envs/gaushvi.yaml"
     params:
@@ -333,11 +408,12 @@ rule methods_gaushanvi:
 rule methods_sysvi:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_sysvi.py"
+        script="scripts/correct_with_sysvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_sysvi.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_sysvi.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_sysvi.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_sysvi.log"
     conda:
         "../envs/sysvi.yaml"
     params:
@@ -353,6 +429,7 @@ rule methods_sysvi:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
@@ -366,7 +443,7 @@ rule methods_scpoli:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_scpoli.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scpoli.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scpoli.log"
     conda:
         "../envs/scpoli.yaml"
     params:
@@ -396,7 +473,7 @@ rule methods_scpoli_pca:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_scpoli_pca.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_scpoli_pca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scpoli_pca.log"
     conda:
         "../envs/scpoli.yaml"
     params:
@@ -425,7 +502,7 @@ rule methods_fastMNN:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_fastMNN.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_fastmnn.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_fastmnn.log"
     conda:
         "../envs/fastmnn.yaml"
     params:
@@ -449,7 +526,7 @@ rule methods_seurat_cca:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_seurat_cca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca.log"
     conda:
         "../envs/seurat.yaml"
     params:
@@ -475,7 +552,7 @@ rule methods_seurat_rpca:
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca.parquet"
     log:
-        "logs/{scenario}/" + config["preproc"] + "_correct_seurat_rpca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca.log"
     conda:
         "../envs/seurat.yaml"
     params:

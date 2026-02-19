@@ -1,14 +1,21 @@
 name: batchcp_correct_sysvi
 channels:
+  - nvidia
+  - pytorch
   - conda-forge
 dependencies:
-  - anndata
-  - cudatoolkit
-  - pandas
   - pip=24.0
-  - pytorch=2.0.0=cuda*
   - python=3.11
-  - scanpy
-  - pyarrow
+  - cudatoolkit=11.8
   - pip:
-    - git+https://github.com/Hrovatin/scvi-tools.git@main
+    - anndata>=0.10
+    - pandas
+    - scanpy
+    - pyarrow
+    - jax[cuda12]
+    - jax-cuda12-pjrt
+    - jax-cuda12-plugin
+    - optuna
+    - torchmetrics
+    - scib-metrics
+    - scvi-tools>=1.4.1

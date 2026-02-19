@@ -1,15 +1,12 @@
 wildcard_constraints:
     criteria=r"target2|prod",
-    scenario=r"scenario_\d",
+    scenario=r"scenario_[a-zA-Z0-9]+",
     pipeline=r"[_a-zA-Z.~0-9\-]*",
-
 
 # Init config
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import correct
-from correct import sphering
 import metrics
 import preprocessing as pp
 import plot
