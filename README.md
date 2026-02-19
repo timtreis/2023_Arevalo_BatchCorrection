@@ -38,14 +38,14 @@ the associated config file. For example, to reproduce Scenario 6 using 8 cores:
 
 bash
 conda activate /home/icb/tim.treis/miniconda/envs/batchcp
-snakemake -c18 --configfile inputs/conf/scenario_8.json --use-conda --conda-prefix "./env_store/" --resources nvidia_gpu=2
+snakemake -c20 --configfile inputs/conf/scenario_7.json --use-conda --conda-prefix "./env_store/" --resources nvidia_gpu=2
 
 
 bash
 snakemake -c8 --configfile inputs/conf/scenario_apricot.json --use-conda --conda-prefix "./env_store/" --rulegraph > rulegraph.dot
 
 
-snakemake -c8 --configfile inputs/conf/scenario_6.json --use-conda --conda-prefix "./env_store/" --until results_table
+snakemake -c8 --configfile inputs/conf/scenario_6.json --use-conda --conda-prefix "./env_store/" --until aggregate_method_outputs_into_adata
 
 You can get the scores, corrected profiles and plots in the ./outputs folder.
 

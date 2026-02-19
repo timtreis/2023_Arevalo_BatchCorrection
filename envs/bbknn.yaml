@@ -9,3 +9,5 @@ dependencies:
   - numpy
   - pyarrow
   - bbknn
+  - scanpy
+  - leidenalg

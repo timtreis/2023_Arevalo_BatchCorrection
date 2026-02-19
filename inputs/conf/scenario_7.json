@@ -1,6 +1,6 @@
 {
     "scenario": "scenario_7",
-    "smoketest": false,
+    "smoketest": true,
     "iqr_scale": 100,
     "clip_value": 500,
     "preproc": "mad_int_featselect",
@@ -17,5 +17,5 @@
     "batch_key": ["Metadata_Source", "Metadata_Batch"],
     "label_key": "Metadata_JCP2022",
     "eval_key": ["Metadata_JCP2022", "Metadata_DRH_MOA"],
-    "optuna_trials": 1
+    "optuna_trials": 30
 }

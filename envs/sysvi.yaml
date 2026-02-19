@@ -18,4 +18,4 @@ dependencies:
     - optuna
     - torchmetrics
     - scib-metrics
-    - git+https://github.com/Hrovatin/scvi-tools.git@main
+    - scvi-tools>=1.4.1

@@ -21,3 +21,7 @@ inputs/source_*
 .Rhistory
 
 env_store/*
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+pixi.lock

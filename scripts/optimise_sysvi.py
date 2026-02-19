@@ -19,7 +19,7 @@ def objective(
     label_key: str, 
     smoketest: bool = False,
 ):
-    """sysVI correction from https://github.com/Hrovatin/scvi-tutorials/blob/main/scrna/sysVI.ipynb"""
+    """sysVI correction from https://docs.scvi-tools.org/en/1.4.1/user_guide/models/sysvi.html"""
 
     # Silence output during training and evaluation
     sys.stdout = open(os.devnull, "w")

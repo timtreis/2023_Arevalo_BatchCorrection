@@ -15,7 +15,7 @@ def correct_with_sysvi(
     output_path: str,
     smoketest: bool = False,
 ):
-    """sysVI correction from https://github.com/Hrovatin/scvi-tutorials/blob/main/scrna/sysVI.ipynb"""
+    """sysVI correction from https://docs.scvi-tools.org/en/1.4.1/user_guide/models/sysvi.html"""
 
     # load hyperparameters
     params = pd.read_csv(parameter_path)

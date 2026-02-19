@@ -7,8 +7,6 @@ wildcard_constraints:
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import correct
-from correct import sphering
 import metrics
 import preprocessing as pp
 import plot
