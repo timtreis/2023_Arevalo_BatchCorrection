@@ -114,7 +114,7 @@ def calculate_map(
     
     map_scores = copairs.mean_average_precision(
         ap_scores,
-        eval_key,
+        [eval_key],
         threshold=threshold,
         null_size=10000,
         seed=0

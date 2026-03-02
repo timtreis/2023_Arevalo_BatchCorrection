@@ -7,7 +7,7 @@ rule bbknn_clustering:
     output:
         "outputs/{prefix}/metrics/{criteria}/scib/{pipeline}_bbknn_clusters.h5ad",
     log:
-        "logs/{prefix}/{criteria}_{pipeline}_bbknn_clustering.log",
+        "outputs/{prefix}/logs/{criteria}_{pipeline}_bbknn_clustering.log",
     params:
         batch_key=config["batch_key"],
     conda:
@@ -32,7 +32,7 @@ rule bbknn_all:
     output:
         output_path="outputs/{scenario}/metrics/{criteria}/{pipeline}_bbknn_scib.parquet",
     log:
-        "logs/{scenario}/{criteria}_{pipeline}_bbknn_all.log",
+        "outputs/{scenario}/logs/{criteria}_{pipeline}_bbknn_all.log",
     run:
         metrics.scib.concat(*input, **output)
 

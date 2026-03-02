@@ -231,8 +231,8 @@ rule methods_scvi_single:
         path="outputs/{scenario}/" + config["preproc"] + "_scvi_single.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scvi_single.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
@@ -261,8 +261,8 @@ rule methods_scvi_multi:
         path="outputs/{scenario}/" + config["preproc"] + "_scvi_multi.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scvi_multi.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -293,8 +293,8 @@ rule methods_scanvi_single:
         path="outputs/{scenario}/" + config["preproc"] + "_scanvi_single.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanvi_single.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
@@ -326,8 +326,8 @@ rule methods_scanvi_multi:
         path="outputs/{scenario}/" + config["preproc"] + "_scanvi_multi.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanvi_multi.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -414,8 +414,8 @@ rule methods_sysvi:
         path="outputs/{scenario}/" + config["preproc"] + "_sysvi.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_sysvi.log"
-    conda:
-        "../envs/sysvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],

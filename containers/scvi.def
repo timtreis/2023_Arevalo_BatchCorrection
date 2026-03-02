@@ -1,0 +1,23 @@
+Bootstrap: localimage
+From: containers/base.sif
+
+%environment
+    # scvi trains with PyTorch on GPU; scib-metrics uses JAX for benchmarking.
+    # JAX and PyTorch cannot both hold cuDNN in the same process — JAX loses.
+    # The latent representations are small, so CPU is fine for the benchmark step.
+    export JAX_PLATFORMS=cpu
+
+%post
+    # PyTorch with CUDA 12.1 support
+    python -m pip install --no-cache-dir \
+        torch \
+        --index-url https://download.pytorch.org/whl/cu121
+
+    # JAX with CUDA 12 support
+    python -m pip install --no-cache-dir "jax[cuda12]"
+
+    # scvi-tools and method-specific dependencies
+    python -m pip install --no-cache-dir \
+        "scvi-tools>=1.4.1" \
+        optuna \
+        torchmetrics

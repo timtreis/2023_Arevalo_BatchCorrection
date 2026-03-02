@@ -1,0 +1,18 @@
+Bootstrap: localimage
+From: containers/base.sif
+
+%environment
+    # scib-metrics uses JAX for benchmark metrics (silhouette, kBET, etc.).
+    # GPU is not needed and JAX GPU initialisation can hang indefinitely
+    # (XLA kernel compilation). Force CPU to avoid this.
+    export JAX_PLATFORMS=cpu
+
+%post
+    # JAX CPU-only (no CUDA needed for metrics computation)
+    python -m pip install --no-cache-dir "jax[cpu]"
+
+    # Additional packages not provided by base
+    python -m pip install --no-cache-dir \
+        plottable \
+        copairs \
+        chex

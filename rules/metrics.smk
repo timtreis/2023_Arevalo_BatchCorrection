@@ -51,12 +51,10 @@ rule metrics_run_scibmetrics_benchmarker:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         methods=METHODS
     log:
-        f"logs/{scenario}/{config['preproc']}_scibmetrics_benchmarker.log"
-    conda:
-        "../envs/scibmetrics.yaml"
+        f"outputs/{scenario}/logs/{config['preproc']}_scibmetrics_benchmarker.log"
+    container:
+        "containers/scibmetrics.sif"
     threads: 6
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && python {input.script} '{input.adata_path}' '{output.path}' '{params.batch_key}' '{params.eval_keys}' '{params.methods}' &> {log}
@@ -71,7 +69,7 @@ rule metrics_mean_average_precision:
         plate_type=config["plate_types"],
         eval_keys=config["eval_key"],
     log:
-        path=f"logs/{scenario}/{config['preproc']}_map_metrics.log"
+        path=f"outputs/{scenario}/logs/{config['preproc']}_map_metrics.log"
     run:
         logging.basicConfig(
             filename=log.path,

@@ -40,7 +40,7 @@ rule select_variant_feats:
     output:
         "outputs/{scenario}/variant_feats.parquet",
     log:
-        "logs/{scenario}/variant_feats.log"
+        "outputs/{scenario}/logs/variant_feats.log"
     run:
         pp.stats.select_variant_features(*input, *output)
 
