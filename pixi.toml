@@ -6,14 +6,14 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [dependencies]
-python = "3.10.*"
+python = "3.13.*"
 conda = "*"
 
 [pypi-dependencies]
-snakemake = ">=7,<8"
-pulp = ">=2.7,<2.8" # needed for "list_solvers = listSolvers" alias
+snakemake = ">=8,<9"
+snakemake-software-deployment-plugin-conda = "*"
 anndata = "*"
-scanpy = ">=1.11.4, <2"
+scanpy = ">=1.11.4,<2"
 pyarrow = "*"
 scib-metrics = "*"
 scikit-learn = "*"
@@ -27,5 +27,9 @@ plotly = "*"
 seaborn = "*"
 
 [tasks]
-pipeline = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_7.json --use-conda --conda-prefix './env_store/' --conda-frontend conda --resources nvidia_gpu=2"
-unlock = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_7.json --use-conda --conda-prefix './env_store/' --conda-frontend conda --resources nvidia_gpu=2 --unlock"
+build-base = "[ containers/base.sif -nt containers/base.def ] && echo 'base.sif is up to date' || apptainer build --force containers/base.sif containers/base.def"
+build-scvi = { cmd = "[ containers/scvi.sif -nt containers/scvi.def ] && [ containers/scvi.sif -nt containers/base.def ] && echo 'scvi.sif is up to date' || apptainer build --force containers/scvi.sif containers/scvi.def", depends-on = ["build-base"] }
+build-scibmetrics = { cmd = "[ containers/scibmetrics.sif -nt containers/scibmetrics.def ] && [ containers/scibmetrics.sif -nt containers/base.def ] && echo 'scibmetrics.sif is up to date' || apptainer build --force containers/scibmetrics.sif containers/scibmetrics.def", depends-on = ["build-base"] }
+build-containers = { depends-on = ["build-scvi", "build-scibmetrics"] }
+pipeline = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_7.json --sdm conda apptainer --conda-prefix './env_store/' --apptainer-args=--nv --resources nvidia_gpu=2"
+unlock = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_7.json --sdm conda apptainer --conda-prefix './env_store/' --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"

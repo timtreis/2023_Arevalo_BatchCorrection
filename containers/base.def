@@ -1,0 +1,48 @@
+Bootstrap: docker
+From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    # Numba writes JIT caches next to source files by default, which are read-only
+    # inside the squashfs image. Redirect to /tmp so the container can always write.
+    export NUMBA_CACHE_DIR=/tmp/numba_cache
+    # Same issue for Matplotlib config
+    export MPLCONFIGDIR=/tmp/matplotlib
+    # JAX pre-allocates all free GPU memory by default; this conflicts with PyTorch
+    # (used by scvi) running in the same process. On-demand allocation avoids OOM.
+    export XLA_PYTHON_CLIENT_PREALLOCATE=false
+    # Torch kernel/hub cache defaults to $HOME/.cache/torch, which may be an
+    # unmounted host path inside the container. Redirect to writable /tmp.
+    export TORCH_HOME=/tmp/torch_home
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update && apt-get install -y \
+        python3.11 \
+        python3.11-dev \
+        python3.11-venv \
+        curl \
+        ca-certificates \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Bootstrap pip for python3.11 (Ubuntu disables ensurepip for system Python)
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+    python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+    ln -sf /usr/bin/python3.11 /usr/local/bin/python
+    ln -sf /usr/bin/python3.11 /usr/local/bin/python3
+
+    # Shared packages used across all method containers.
+    # numpy<2 is required because scib-metrics uses np.in1d which was removed in NumPy 2.0.
+    python -m pip install --no-cache-dir \
+        "numpy<2" \
+        anndata \
+        pandas \
+        scanpy \
+        pyarrow \
+        scib-metrics \
+        scipy \
+        scikit-learn \
+        statsmodels \
+        tqdm

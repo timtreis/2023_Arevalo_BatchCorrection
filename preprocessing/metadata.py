@@ -23,13 +23,26 @@ MAPPER = {
     "JCP2022_900001": "BAD CONSTRUCT",
 }
 
-MICRO_CONFIG = pd.read_csv(
-    "https://raw.githubusercontent.com/jump-cellpainting/datasets/181fa0dc96b0d68511b437cf75a712ec782576aa/metadata/microscope_config.csv"
-)
-MICRO_CONFIG["Metadata_Source"] = "source_" + MICRO_CONFIG["Metadata_Source"].astype(
-    str
-)
-MICRO_CONFIG = MICRO_CONFIG.set_index("Metadata_Source")["Metadata_Microscope_Name"]
+_MICRO_CONFIG_URL = "https://raw.githubusercontent.com/jump-cellpainting/datasets/181fa0dc96b0d68511b437cf75a712ec782576aa/metadata/microscope_config.csv"
+_MICRO_CONFIG_LOCAL = "inputs/metadata/microscope_config.csv"
+_micro_config_cache = None
+
+
+def _load_micro_config():
+    global _micro_config_cache
+    if _micro_config_cache is None:
+        import os
+        src = _MICRO_CONFIG_LOCAL if os.path.exists(_MICRO_CONFIG_LOCAL) else _MICRO_CONFIG_URL
+        df = pd.read_csv(src)
+        df["Metadata_Source"] = "source_" + df["Metadata_Source"].astype(str)
+        _micro_config_cache = df.set_index("Metadata_Source")["Metadata_Microscope_Name"]
+    return _micro_config_cache
+
+
+def __getattr__(name):
+    if name == "MICRO_CONFIG":
+        return _load_micro_config()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def find_feat_cols(cols: Iterable[str]):

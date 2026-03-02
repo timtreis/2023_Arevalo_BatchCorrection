@@ -38,8 +38,8 @@ rule optimize_scvi_single:
         path="outputs/{scenario}/optimization/optuna_scvi_single.csv"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_scvi_single.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
@@ -69,8 +69,8 @@ rule optimize_scvi_multi:
         path="outputs/{scenario}/optimization/optuna_scvi_multi.csv"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_scvi_multi.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -102,8 +102,8 @@ rule optimize_scanvi_single:
         path="outputs/{scenario}/optimization/optuna_scanvi_single.csv"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_scanvi_single.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
@@ -134,8 +134,8 @@ rule optimize_scanvi_multi:
         path="outputs/{scenario}/optimization/optuna_scanvi_multi.csv"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_scanvi_multi.log"
-    conda:
-        "../envs/scvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -167,8 +167,8 @@ rule optimize_sysvi:
         path="outputs/{scenario}/optimization/optuna_sysvi.csv"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_sysvi.log"
-    conda:
-        "../envs/sysvi.yaml"
+    container:
+        "containers/scvi.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],

@@ -5,7 +5,8 @@ import pyarrow.parquet as pq
 from tqdm.contrib.concurrent import thread_map
 import anndata as ad
 
-from .metadata import build_path, load_metadata, MICRO_CONFIG, find_feat_cols, find_meta_cols
+from . import metadata
+from .metadata import build_path, load_metadata, find_feat_cols, find_meta_cols
 
 
 def to_anndata(parquet_path):
@@ -111,7 +112,7 @@ def add_row_col(meta: pd.DataFrame):
     meta['Metadata_Column'] = position['column'].astype('category')
 
 def add_microscopy_info(meta: pd.DataFrame):
-    configs = meta['Metadata_Source'].map(MICRO_CONFIG).astype('category')
+    configs = meta['Metadata_Source'].map(metadata.MICRO_CONFIG).astype('category')
     meta['Metadata_Microscope'] = configs
 
 def write_parquet(sources, plate_types, output_file):

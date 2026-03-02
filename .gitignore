@@ -21,6 +21,8 @@ inputs/source_*
 .Rhistory
 
 env_store/*
+containers/*.sif
+containers/*.tmp.*
 # pixi environments
 .pixi/*
 !.pixi/config.toml
