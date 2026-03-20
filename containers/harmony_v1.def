@@ -1,0 +1,22 @@
+Bootstrap: localimage
+From: containers/base.sif
+
+%environment
+    # JAX is needed only for scib-metrics benchmarking inside optimize_harmony.
+    # CPU is sufficient and avoids GPU contention.
+    export JAX_PLATFORMS=cpu
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # annoy (scanorama dep in lightweight) needs g++ — not needed here,
+    # but keep build-essential for any C extensions in dependencies
+    apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+
+    # Pin harmonypy to the last pre-Harmony2 release (v1 algorithm).
+    # v0.0.10 uses the original (E+1)/(O+1) soft-assignment formula.
+    # v0.1.0+ switched to the Harmony2 E/(O+E) formula (not toggleable).
+    python -m pip install --no-cache-dir \
+        "harmonypy==0.0.10" \
+        optuna \
+        "jax[cpu]"

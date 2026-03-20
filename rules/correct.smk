@@ -14,13 +14,13 @@ rule methods_combat:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
         script="scripts/correct_with_combat.py",
-        parameter_path="outputs/{scenario}/optimization/optuna_harmony.csv"
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony_v2.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_combat.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_combat.log"
-    conda:
-        "../envs/harmony.yaml"  # we only need scanpy so this will do
+    container:
+        "containers/base.sif"  # combat only needs scanpy, which is in base
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     resources:
@@ -44,8 +44,8 @@ rule methods_sphering:
         path="outputs/{scenario}/" + config["preproc"] + "_sphering.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_sphering.log"
-    conda:
-        "../envs/sphering.yaml"
+    container:
+        "containers/base.sif"
     params:
         method="ZCA-cor",
         column_norm="Metadata_JCP2022",
@@ -64,17 +64,46 @@ rule methods_sphering:
             &> '{log}'
         """
 
-rule methods_harmony:
+rule methods_harmony_v1:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
         script="scripts/correct_with_harmony.py",
-        parameter_path="outputs/{scenario}/optimization/optuna_harmony.csv"
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony_v1.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_harmony.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_harmony_v1.parquet"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_harmony.log"
-    conda:
-        "../envs/harmony.yaml"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_harmony_v1.log"
+    container:
+        "containers/harmony_v1.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        nvidia_gpu=1
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        python '{input.script}' \
+            --mode 'harmony' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+rule methods_harmony_v2:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_harmony.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_harmony_v2.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_harmony_v2.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_harmony_v2.log"
+    container:
+        "containers/lightweight.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
@@ -101,8 +130,8 @@ rule methods_harmony_pca:
         path="outputs/{scenario}/" + config["preproc"] + "_harmony_pca.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_harmony_pca.log"
-    conda:
-        "../envs/harmony.yaml"
+    container:
+        "containers/lightweight.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
@@ -128,8 +157,8 @@ rule methods_scanorama:
         path="outputs/{scenario}/" + config["preproc"] + "_scanorama.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanorama.log"
-    conda:
-        "../envs/scanorama.yaml"
+    container:
+        "containers/lightweight.sif"
     params:
         method="scanorama",
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
@@ -154,8 +183,8 @@ rule methods_scanorama_pca:
         path="outputs/{scenario}/" + config["preproc"] + "_scanorama_pca.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scanorama_pca.log"
-    conda:
-        "../envs/scanorama.yaml"
+    container:
+        "containers/lightweight.sif"
     params:
         method="scanorama_pca",
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
@@ -204,8 +233,8 @@ rule methods_desc:
         path="outputs/{scenario}/" + config["preproc"] + "_desc.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_desc.log"
-    conda:
-        "../envs/desc.yaml"
+    container:
+        "containers/desc.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
@@ -424,6 +453,7 @@ rule methods_sysvi:
         nvidia_gpu=1
     shell:
         """
+        export JAX_PLATFORMS=cuda && \
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
@@ -444,8 +474,8 @@ rule methods_scpoli:
         path="outputs/{scenario}/" + config["preproc"] + "_scpoli.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scpoli.log"
-    conda:
-        "../envs/scpoli.yaml"
+    container:
+        "containers/scpoli.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -474,8 +504,8 @@ rule methods_scpoli_pca:
         path="outputs/{scenario}/" + config["preproc"] + "_scpoli_pca.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scpoli_pca.log"
-    conda:
-        "../envs/scpoli.yaml"
+    container:
+        "containers/scpoli.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -503,8 +533,8 @@ rule methods_fastMNN:
         path="outputs/{scenario}/" + config["preproc"] + "_fastMNN.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_fastmnn.log"
-    conda:
-        "../envs/fastmnn.yaml"
+    container:
+        "containers/r.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     resources:
@@ -527,8 +557,8 @@ rule methods_seurat_cca:
         path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca.log"
-    conda:
-        "../envs/seurat.yaml"
+    container:
+        "containers/r.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="cca",
@@ -553,8 +583,8 @@ rule methods_seurat_rpca:
         path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca.parquet"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca.log"
-    conda:
-        "../envs/seurat.yaml"
+    container:
+        "containers/r.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="rpca",

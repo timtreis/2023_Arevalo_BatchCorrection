@@ -1,0 +1,21 @@
+Bootstrap: localimage
+From: containers/base.sif
+
+%environment
+    # JAX is needed only for scib-metrics benchmarking inside optimize_harmony.
+    # CPU is sufficient and avoids GPU contention.
+    export JAX_PLATFORMS=cpu
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # annoy (scanorama dep) needs g++ to compile C++ extensions
+    apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+
+    python -m pip install --no-cache-dir \
+        harmonypy \
+        scanorama \
+        bbknn \
+        leidenalg \
+        optuna \
+        "jax[cpu]"
