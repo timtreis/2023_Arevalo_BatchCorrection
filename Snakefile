@@ -3,26 +3,27 @@ WORKFLOWS = [
     "mad_int_featselect",
 ]
 METHODS = [
-    # "scanorama",
+    "scanorama",
     # "scanorama_pca",
-    # "mnn", # pain in the ass, we'll just use the R version fastMNN instead
-    # "fastMNN",
-    # "harmony",
+    # "mnn", # skipped: ancient deps, replaced by fastMNN
+    "fastMNN",
+    "harmony_v1",
+    "harmony_v2",
     # "harmony_pca", # performs the same as normal harmony
-    # "combat",
-    # "desc",
+    "combat",
+    "desc",
     "scvi_single",
-    # "scvi_multi",
-    # "sysvi",    
-    # "scanvi_single",
-    # "scanvi_multi",
-    # "gaushvi",
-    # "gaushanvi", 
-    # "scpoli",
+    "scvi_multi",
+    "sysvi",
+    "scanvi_single",
+    "scanvi_multi",
+    # "gaushvi",  # deferred: custom scvi-tools fork needs investigation
+    # "gaushanvi",  # deferred: custom scvi-tools fork needs investigation
+    "scpoli",
     # "scpoli_pca", # performs quite a bit worse than normal scpoli
-    # "sphering",
-    # "seurat_cca",
-    # "seurat_rpca",
+    "sphering",
+    "seurat_cca",
+    "seurat_rpca",
     # "cpDistiller_B",
     # "cpDistiller_S",
     # "cpDistiller_SBP",

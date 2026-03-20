@@ -10,8 +10,8 @@ rule bbknn_clustering:
         "outputs/{prefix}/logs/{criteria}_{pipeline}_bbknn_clustering.log",
     params:
         batch_key=config["batch_key"],
-    conda:
-        "../envs/bbknn.yaml"
+    container:
+        "containers/lightweight.sif"
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \

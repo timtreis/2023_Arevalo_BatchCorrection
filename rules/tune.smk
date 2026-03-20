@@ -7,8 +7,8 @@ rule optimize_scpoli:
         path="outputs/{scenario}/optimization/optuna_scpoli.csv"
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_scpoli.log"
-    conda:
-        "../envs/scpoli.yaml"
+    container:
+        "containers/scpoli.sif"
     params:
         batch_key=','.join(config["batch_key"]),
         label_key=config["label_key"],
@@ -178,6 +178,7 @@ rule optimize_sysvi:
         nvidia_gpu=1
     shell:
         """
+        export JAX_PLATFORMS=cuda && \
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
@@ -189,16 +190,46 @@ rule optimize_sysvi:
             &> '{log}'
         """
 
-rule optimize_harmony:
+rule optimize_harmony_v1:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
         script="scripts/optimise_harmony.py"
     output:
-        path="outputs/{scenario}/optimization/optuna_harmony.csv"
+        path="outputs/{scenario}/optimization/optuna_harmony_v1.csv"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_harmony.log"
-    conda:
-        "../envs/harmony.yaml"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_harmony_v1.log"
+    container:
+        "containers/harmony_v1.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        label_key=config["label_key"],
+        trials=config["optuna_trials"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        nvidia_gpu=1
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --n_trials '{params.trials}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+rule optimize_harmony_v2:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/optimise_harmony.py"
+    output:
+        path="outputs/{scenario}/optimization/optuna_harmony_v2.csv"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_harmony_v2.log"
+    container:
+        "containers/lightweight.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],

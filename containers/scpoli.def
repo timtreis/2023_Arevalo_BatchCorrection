@@ -1,0 +1,61 @@
+Bootstrap: docker
+From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export NUMBA_CACHE_DIR=/tmp/numba_cache
+    export MPLCONFIGDIR=/tmp/matplotlib
+    export XLA_PYTHON_CLIENT_PREALLOCATE=false
+    export TORCH_HOME=/tmp/torch_home
+    export JAX_PLATFORMS=cpu
+    # scarches checks for this; without it, sklearn import fails
+    export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # scpoli requires Python 3.9 (scarches + scvi-tools 1.1.6 compatibility)
+    apt-get update && apt-get install -y \
+        software-properties-common \
+        curl \
+        ca-certificates \
+        && add-apt-repository -y ppa:deadsnakes/ppa \
+        && apt-get update \
+        && apt-get install -y \
+        python3.9 \
+        python3.9-dev \
+        python3.9-venv \
+        python3.9-distutils \
+        && rm -rf /var/lib/apt/lists/*
+
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.9
+    python3.9 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+    ln -sf /usr/bin/python3.9 /usr/local/bin/python
+    ln -sf /usr/bin/python3.9 /usr/local/bin/python3
+
+    # PyTorch 2.0 with CUDA 12.1
+    python -m pip install --no-cache-dir \
+        torch==2.0.0 \
+        --index-url https://download.pytorch.org/whl/cu118
+
+    # Core scientific stack (pinned for scvi-tools 1.1.6 compat)
+    python -m pip install --no-cache-dir \
+        "numpy<2" \
+        anndata \
+        pandas \
+        scanpy \
+        pyarrow \
+        scipy \
+        scikit-learn \
+        statsmodels \
+        tqdm
+
+    # scvi-tools 1.1.6 + scarches + optimization deps
+    python -m pip install --no-cache-dir \
+        "scvi-tools==1.1.6.post2" \
+        "numpyro==0.15.3" \
+        "scarches==0.6.1" \
+        scib-metrics \
+        optuna \
+        "jax[cpu]"
