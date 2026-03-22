@@ -53,7 +53,10 @@ def correct_with_harmony(
         tau=tau,
     )
 
-    feats = harmony_out.Z_corr.T
+    # harmonypy v1 returns Z_corr as (d, N), v2 returns (N, d)
+    Z = harmony_out.Z_corr
+    n_cells = len(meta)
+    feats = Z.T if Z.shape[0] != n_cells else Z
     features = [f"harmony_{i}" for i in range(feats.shape[1])]
     io.merge_parquet(meta, feats, features, output_path)
 
@@ -77,7 +80,10 @@ def correct_with_harmony_pca(
         nclust=300,  # Number of compounds
     )
 
-    feats = harmony_out.Z_corr.T
+    # harmonypy v1 returns Z_corr as (d, N), v2 returns (N, d)
+    Z = harmony_out.Z_corr
+    n_cells = len(meta)
+    feats = Z.T if Z.shape[0] != n_cells else Z
     features = [f"harmony_{i}" for i in range(feats.shape[1])]
     io.merge_parquet(meta, feats, features, output_path)
 

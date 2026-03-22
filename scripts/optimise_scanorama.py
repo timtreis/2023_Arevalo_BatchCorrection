@@ -5,61 +5,49 @@ import argparse
 import pandas as pd
 import anndata as ad
 import optuna
-import numpy as np
+import scanorama
 
 from preprocessing import io
-from harmonypy import run_harmony
 from utils import scib_benchmark_embedding
 
 logger = logging.getLogger(__name__)
 
+
 def objective(
     trial,
-    adata: ad.AnnData, 
-    batch_key: str, 
-    label_key: str, 
+    adata: ad.AnnData,
+    batch_key: str,
+    label_key: str,
     smoketest: bool = False,
 ):
-    # Silence output
     sys.stdout = open(os.devnull, "w")
 
-    # Optimize Harmony-specific hyperparameters
-    sigma  = trial.suggest_float("sigma", 0.05, 1.0)
-    theta  = trial.suggest_float("theta", 0.1, 5.0)
-    lamb   = trial.suggest_float("lamb", 0.1, 5.0)
-    nclust = trial.suggest_int("nclust", 2, 500)
-    tau    = trial.suggest_float("tau", 0.0, 1.0)
+    knn = trial.suggest_int("knn", 5, 100)
+    sigma = trial.suggest_float("sigma", 5.0, 150.0)
+    alpha = trial.suggest_float("alpha", 0.05, 0.50)
 
-    # Ensure the data matrix is a dense numpy array
-    if not isinstance(adata.X, np.ndarray):
-        data_mat = adata.X.toarray()
-    else:
-        data_mat = adata.X
-    meta_data = adata.obs.copy()
+    adata = adata[adata.obs.sort_values(by=batch_key).index].copy()
 
-    ho = run_harmony(
-        data_mat=data_mat,
-        meta_data=meta_data,
-        vars_use=batch_key,
-        theta=theta,
-        lamb=lamb,
-        sigma=sigma,
-        nclust=nclust,
-        tau=tau,
-        random_state=0
+    def split_adata_by_col(adata, col):
+        splits = []
+        for value in adata.obs[col].cat.categories:
+            mask = adata.obs[col] == value
+            splits.append(adata[mask].copy())
+        return splits
+
+    adatas_by_source = split_adata_by_col(adata, batch_key)
+    scanorama.integrate_scanpy(
+        adatas_by_source, knn=knn, sigma=sigma, alpha=alpha
     )
+    corrected_adata = ad.concat(adatas_by_source)
 
-    # harmonypy v1 returns (d, N), v2 returns (N, d)
-    vals = ho.result()
-    if vals.shape[0] != len(adata):
-        vals = vals.T
-    features = [f"harmony_{i}" for i in range(vals.shape[1])]
+    vals = corrected_adata.obsm["X_scanorama"]
+    features = [f"scanorama_{i}" for i in range(vals.shape[1])]
     integrated_adata = ad.AnnData(
-        X=pd.DataFrame(vals, columns=features, index=adata.obs_names),
-        obs=adata.obs.copy()
+        X=pd.DataFrame(vals, columns=features, index=corrected_adata.obs_names),
+        obs=corrected_adata.obs.copy(),
     )
 
-    # Evaluate the integration using scIB metrics
     batch, bio = scib_benchmark_embedding(
         adata=integrated_adata,
         batch_key=batch_key,
@@ -67,13 +55,13 @@ def objective(
         lightweight=True,
     )
 
-    # Restore output
     sys.stdout.close()
     sys.stdout = sys.__stdout__
 
     return batch, bio
 
-def optimize_harmony(
+
+def optimize_scanorama(
     input_path: str,
     batch_key: str,
     label_key: str,
@@ -86,7 +74,10 @@ def optimize_harmony(
     adata = io.to_anndata(input_path)
 
     study = optuna.create_study(directions=["maximize", "maximize"])
-    study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, smoketest), n_trials=n_trials)
+    study.optimize(
+        lambda trial: objective(trial, adata.copy(), batch_key, label_key, smoketest),
+        n_trials=n_trials,
+    )
 
     df = study.trials_dataframe()
     df = df.rename(columns={"values_0": "batch", "values_1": "bio"})
@@ -94,17 +85,22 @@ def optimize_harmony(
     df = df.sort_values("total", ascending=False)
     df.to_csv(output_path, index=False)
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Use Optuna to tune hyperparameters for Harmony integration.")
+    parser = argparse.ArgumentParser(
+        description="Use Optuna to tune hyperparameters for Scanorama."
+    )
     parser.add_argument("--input_data", required=True, help="Path to input data.")
     parser.add_argument("--batch_key", required=True, help="Batch key.")
     parser.add_argument("--label_key", required=True, help="Label key.")
     parser.add_argument("--n_trials", required=True, help="How many trials to run.")
-    parser.add_argument("--output_path", required=True, help="Where to save the optimal parameter set.")
-    parser.add_argument("--smoketest", action="store_true", help="Run a smoketest with limited epochs")
+    parser.add_argument("--output_path", required=True, help="Where to save results.")
+    parser.add_argument(
+        "--smoketest", action="store_true", help="Run a smoketest with limited trials"
+    )
     args = parser.parse_args()
 
-    optimize_harmony(
+    optimize_scanorama(
         input_path=args.input_data,
         batch_key=args.batch_key,
         label_key=args.label_key,

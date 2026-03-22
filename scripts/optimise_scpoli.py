@@ -77,7 +77,8 @@ def objective(
     batch, bio = scib_benchmark_embedding(
         adata=integrated_adata,
         batch_key=batch_key[0], # we can only use one key here
-        label_key=label_key
+        label_key=label_key,
+        lightweight=True,
     )
 
     # restore output

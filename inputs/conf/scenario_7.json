@@ -1,9 +1,7 @@
 {
     "scenario": "scenario_7",
-    "smoketest": true,
     "iqr_scale": 100,
     "clip_value": 500,
-    "preproc": "mad_int_featselect",
     "sources": [
         "source_2",
         "source_3",
@@ -14,8 +12,13 @@
     "plate_types": [
         "TARGET2"
     ],
-    "batch_key": ["Metadata_Source", "Metadata_Batch"],
+    "batch_key": [
+        "Metadata_Source",
+        "Metadata_Batch"
+    ],
     "label_key": "Metadata_JCP2022",
-    "eval_key": ["Metadata_JCP2022", "Metadata_DRH_MOA"],
-    "optuna_trials": 30
+    "eval_key": [
+        "Metadata_JCP2022",
+        "Metadata_DRH_MOA"
+    ]
 }

@@ -113,6 +113,7 @@ def objective(
         adata=integrated,
         batch_key=actual_batch_key,
         label_key=label_key,
+        lightweight=True,
     )
 
     sys.stdout.close()

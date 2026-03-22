@@ -12,6 +12,9 @@
     ],
     "batch_key": "Metadata_Source",
     "label_key": "Metadata_JCP2022",
+    "eval_key": [
+        "Metadata_JCP2022"
+    ],
     "column_norm": "Metadata_JCP2022",
     "values_norm": [
         "DMSO"

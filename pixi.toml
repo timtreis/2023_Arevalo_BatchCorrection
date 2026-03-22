@@ -16,6 +16,7 @@ anndata = "*"
 scanpy = ">=1.11.4,<2"
 pyarrow = "*"
 scib-metrics = "*"
+optuna = "*"
 scikit-learn = "*"
 copairs = "*"
 tqdm = "*"
@@ -32,9 +33,23 @@ build-scvi = { cmd = "[ containers/scvi.sif -nt containers/scvi.def ] && [ conta
 build-scibmetrics = { cmd = "[ containers/scibmetrics.sif -nt containers/scibmetrics.def ] && [ containers/scibmetrics.sif -nt containers/base.def ] && echo 'scibmetrics.sif is up to date' || apptainer build --force containers/scibmetrics.sif containers/scibmetrics.def", depends-on = ["build-base"] }
 build-lightweight = { cmd = "[ containers/lightweight.sif -nt containers/lightweight.def ] && [ containers/lightweight.sif -nt containers/base.def ] && echo 'lightweight.sif is up to date' || apptainer build --force containers/lightweight.sif containers/lightweight.def", depends-on = ["build-base"] }
 build-scpoli = "[ containers/scpoli.sif -nt containers/scpoli.def ] && echo 'scpoli.sif is up to date' || apptainer build --force containers/scpoli.sif containers/scpoli.def"
-build-desc = "[ containers/desc.sif -nt containers/desc.def ] && echo 'desc.sif is up to date' || apptainer build --force containers/desc.sif containers/desc.def"
+build-desc = { cmd = "[ containers/desc.sif -nt containers/desc.def ] && [ containers/desc.sif -nt containers/base.def ] && echo 'desc.sif is up to date' || apptainer build --force containers/desc.sif containers/desc.def", depends-on = ["build-base"] }
 build-r = "[ containers/r.sif -nt containers/r.def ] && echo 'r.sif is up to date' || apptainer build --force containers/r.sif containers/r.def"
 build-harmony-v1 = { cmd = "[ containers/harmony_v1.sif -nt containers/harmony_v1.def ] && [ containers/harmony_v1.sif -nt containers/base.def ] && echo 'harmony_v1.sif is up to date' || apptainer build --force containers/harmony_v1.sif containers/harmony_v1.def", depends-on = ["build-base"] }
 build-containers = { depends-on = ["build-scvi", "build-scibmetrics", "build-lightweight", "build-harmony-v1", "build-scpoli", "build-desc", "build-r"] }
-pipeline = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_7.json --sdm conda apptainer --conda-prefix './env_store/' --apptainer-args=--nv --resources nvidia_gpu=2"
-unlock = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_7.json --sdm conda apptainer --conda-prefix './env_store/' --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
+
+# Shared snakemake args (shared.json is loaded first, scenario config overrides)
+# Usage: pixi run scenario-1  (or scenario-2, ..., scenario-7)
+scenario-1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --keep-going"
+scenario-2 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_2.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --keep-going"
+scenario-3 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_3.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --keep-going"
+scenario-4 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_4.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --keep-going"
+scenario-5 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_5.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --keep-going"
+scenario-7 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_7.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --keep-going"
+
+unlock-1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
+unlock-2 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_2.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
+unlock-3 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_3.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
+unlock-4 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_4.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
+unlock-5 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_5.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
+unlock-7 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_7.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"

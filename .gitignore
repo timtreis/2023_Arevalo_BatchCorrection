@@ -19,6 +19,7 @@ inputs/source_*
 .RHistory
 *.log
 .Rhistory
+*.ckpt
 
 env_store/*
 containers/*.sif

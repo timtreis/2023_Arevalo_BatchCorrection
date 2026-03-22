@@ -1,0 +1,5 @@
+{
+    "smoketest": false,
+    "preproc": "mad_int_featselect",
+    "optuna_trials": 30
+}

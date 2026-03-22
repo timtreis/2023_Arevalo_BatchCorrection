@@ -152,7 +152,8 @@ rule methods_harmony_pca:
 rule methods_scanorama:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_scanorama.py"
+        script="scripts/correct_with_scanorama.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_scanorama.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_scanorama.parquet"
     log:
@@ -171,6 +172,7 @@ rule methods_scanorama:
             --mode '{params.method}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             &> '{log}'
         """
@@ -228,7 +230,8 @@ rule methods_mnn:
 rule methods_desc:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_desc.py"
+        script="scripts/correct_with_desc.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_desc.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_desc.parquet"
     log:
@@ -246,6 +249,7 @@ rule methods_desc:
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             {params.smoketest} \
             &> '{log}'
@@ -453,7 +457,7 @@ rule methods_sysvi:
         nvidia_gpu=1
     shell:
         """
-        export JAX_PLATFORMS=cuda && \
+        export JAX_PLATFORMS=cpu && \
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
@@ -528,7 +532,8 @@ rule methods_scpoli_pca:
 rule methods_fastMNN:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_fastmnn.R"
+        script="scripts/correct_with_fastmnn.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_fastmnn.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_fastMNN.parquet"
     log:
@@ -545,6 +550,7 @@ rule methods_fastMNN:
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             &> '{log}'
         """
@@ -552,7 +558,8 @@ rule methods_fastMNN:
 rule methods_seurat_cca:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_seurat.R"
+        script="scripts/correct_with_seurat.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca.parquet"
     log:
@@ -571,6 +578,7 @@ rule methods_seurat_cca:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --method '{params.method}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             &> '{log}'
         """
@@ -578,7 +586,8 @@ rule methods_seurat_cca:
 rule methods_seurat_rpca:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_seurat.R"
+        script="scripts/correct_with_seurat.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca.parquet"
     log:
@@ -597,6 +606,7 @@ rule methods_seurat_rpca:
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --method '{params.method}' \
+            --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
             &> '{log}'
         """

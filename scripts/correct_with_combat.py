@@ -14,7 +14,7 @@ def correct_with_combat(dframe_path: str, batch_key: str, output_path: str):
 
     meta = adata.obs.reset_index(drop=True).copy()
     features = [f"combat_{i}" for i in range(vals.shape[1])]
-    io.merge_parquet(meta, vals, features, output_path)        
+    io.merge_parquet(meta, vals, features, output_path)
     logger.info(f"Combat-corrected data saved successfully to {output_path}")
 
 
@@ -25,6 +25,9 @@ if __name__ == "__main__":
     parser.add_argument("--batch_key", required=True, help="Batch key.")
     parser.add_argument(
         "--output_path", required=True, help="Path to save corrected data."
+    )
+    parser.add_argument(
+        "--parameter_path", default=None, help="Unused; accepted for Snakemake dependency tracking."
     )
 
     args = parser.parse_args()
