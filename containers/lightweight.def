@@ -12,6 +12,11 @@ From: containers/base.sif
     # annoy (scanorama dep) needs g++ to compile C++ extensions
     apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 
+    # Rebuild annoy without AVX-512 to avoid SIGILL on older CPUs
+    # ANNOY_COMPILER_ARGS splits on commas, not spaces — replaces all default flags
+    ANNOY_COMPILER_ARGS="-march=x86-64-v3,-O3,-ffast-math,-fno-associative-math,-DANNOYLIB_MULTITHREADED_BUILD,-std=c++14" \
+        python -m pip install --no-cache-dir --no-binary annoy annoy
+
     python -m pip install --no-cache-dir \
         harmonypy \
         scanorama \

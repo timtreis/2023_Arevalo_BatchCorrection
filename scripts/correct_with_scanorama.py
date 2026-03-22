@@ -7,11 +7,28 @@ import anndata as ad
 logger = logging.getLogger(__name__)
 
 
-def correct_with_scanorama(parquet_path, batch_key, output_path, smoketest=False):
+def _load_hyperparameters(parameter_path):
+    import pandas as pd
+    params = pd.read_csv(parameter_path)
+    params = params.sort_values("total", ascending=False).iloc[0].to_dict()
+    if params["state"] != "COMPLETE":
+        raise ValueError("Optimization did not complete successfully")
+    knn = int(params["params_knn"])
+    sigma = params["params_sigma"]
+    alpha = params["params_alpha"]
+    print(f"\nUsing tuned params: knn={knn}, sigma={sigma}, alpha={alpha}\n")
+    return knn, sigma, alpha
+
+
+def correct_with_scanorama(parquet_path, batch_key, output_path, parameter_path=None, smoketest=False):
     """Scanorama correction on raw data"""
     import scanorama
 
     adata = io.to_anndata(parquet_path)
+
+    knn, sigma, alpha = (20, 15.0, 0.10)  # defaults
+    if parameter_path is not None:
+        knn, sigma, alpha = _load_hyperparameters(parameter_path)
 
     # Sort adata based on batch_key (needed for scanorama)
     adata = adata[adata.obs.sort_values(by=batch_key).index]
@@ -26,7 +43,7 @@ def correct_with_scanorama(parquet_path, batch_key, output_path, smoketest=False
 
     # batch-correct
     adatas_by_source = split_adata_by_col(adata, batch_key)
-    scanorama.integrate_scanpy(adatas_by_source)  # modifies in-place
+    scanorama.integrate_scanpy(adatas_by_source, knn=knn, sigma=sigma, alpha=alpha)
     corrected_adata = ad.concat(adatas_by_source)
 
     # write to parquet as old pipeline
@@ -73,6 +90,7 @@ if __name__ == "__main__":
         "--input_data", required=True, help="Path to the input data in Parquet format."
     )
     parser.add_argument("--batch_key", required=True, help="Batch key.")
+    parser.add_argument("--parameter_path", default=None, help="Path to Optuna parameter CSV.")
     parser.add_argument(
         "--output_path", required=True, help="Path to save the corrected data."
     )
@@ -89,6 +107,7 @@ if __name__ == "__main__":
             parquet_path=args.input_data,
             batch_key=args.batch_key,
             output_path=args.output_path,
+            parameter_path=args.parameter_path,
             smoketest=args.smoketest,
         )
     elif args.mode == "scanorama_pca":
