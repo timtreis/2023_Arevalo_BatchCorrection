@@ -32,7 +32,7 @@ def objective(
     embedding_dims = trial.suggest_int("embedding_dims", 2, 20, step=1)
 
     # Optimize pretraining to training epoch ratio
-    total_epochs = 4 if smoketest else 50
+    total_epochs = 4 if smoketest else 100
     pretrain_to_train_ratio = trial.suggest_float("pretrain_to_train_ratio", 0.1, 0.9, step=0.1)
     n_pretrain_epochs = int(total_epochs * pretrain_to_train_ratio)
     n_train_epochs = total_epochs - n_pretrain_epochs

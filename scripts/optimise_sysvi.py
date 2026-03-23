@@ -35,7 +35,7 @@ def objective(
     use_z_distance_cycle_weight = trial.suggest_categorical("use_z_distance_cycle_weight", [True, False])
     z_distance_cycle_weight = trial.suggest_int("z_distance_cycle_weight", 1, 50)
 
-    n_epochs = 2 if smoketest else 50
+    n_epochs = 2 if smoketest else 100
 
     if isinstance(batch_key, list) and len(batch_key) == 1:
         batch_key = batch_key[0]
