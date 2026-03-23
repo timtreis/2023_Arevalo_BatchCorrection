@@ -5,6 +5,7 @@ import pandas as pd
 
 from scib_metrics.benchmark import Benchmarker
 from metrics.scib import (
+    _ensure_inchikey,
     _merge_with_duplication,
     _load_opentargets_moa_info,
     _load_repurposinghub_moa_info,
@@ -42,8 +43,8 @@ def run_scibmetrics_benchmarker(
 
         if eval_key in eval_key_function_mapping:
             meta = eval_key_function_mapping[eval_key]()
-            print(meta)
-            adata_for_eval = _merge_with_duplication(adata.copy(), meta)
+            adata_copy = _ensure_inchikey(adata.copy())
+            adata_for_eval = _merge_with_duplication(adata_copy, meta)
             adata_for_eval = adata_for_eval[~adata_for_eval.obs[eval_key].isna()].copy()
         else:
             adata_for_eval = adata.copy()

@@ -7,6 +7,7 @@ import anndata as ad
 
 from preprocessing.io import split_parquet
 from metrics.scib import (
+    _ensure_inchikey,
     _load_opentargets_moa_info,
     _load_repurposinghub_moa_info,
     _load_repurposinghub_target_info,
@@ -156,7 +157,8 @@ def mean_average_precision(
         # MOA eval_keys need external annotations merged into adata
         if eval_key in _MOA_EVAL_KEY_LOADERS:
             meta = _MOA_EVAL_KEY_LOADERS[eval_key]()
-            adata_for_eval = _merge_with_duplication(adata.copy(), meta)
+            adata_copy = _ensure_inchikey(adata.copy())
+            adata_for_eval = _merge_with_duplication(adata_copy, meta)
             adata_for_eval = adata_for_eval[~adata_for_eval.obs[eval_key].isna()].copy()
             if adata_for_eval.n_obs == 0:
                 logger.warning(f"No samples with valid '{eval_key}' annotations. Skipping.")

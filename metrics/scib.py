@@ -22,6 +22,19 @@ with warnings.catch_warnings():
 logger = logging.getLogger(__name__)
 CLUSTER_KEY = "Metadata_Cluster"
 
+
+def _ensure_inchikey(adata: ad.AnnData) -> ad.AnnData:
+    """Add Metadata_InChIKey to adata.obs if missing, by joining with compound metadata."""
+    if "Metadata_InChIKey" in adata.obs.columns:
+        return adata
+    compound_meta = pd.read_csv("inputs/metadata/compound.csv.gz", usecols=["Metadata_JCP2022", "Metadata_InChIKey"])
+    # Deduplicate: some JCP2022 IDs map to multiple InChIKeys; keep first
+    compound_meta = compound_meta.drop_duplicates(subset="Metadata_JCP2022", keep="first")
+    # Use map instead of merge to preserve index
+    jcp_to_inchi = compound_meta.set_index("Metadata_JCP2022")["Metadata_InChIKey"]
+    adata.obs["Metadata_InChIKey"] = adata.obs["Metadata_JCP2022"].map(jcp_to_inchi).values
+    return adata
+
 def _filter_min_max_members(
     data: pd.DataFrame,
     col_to_count: str,
