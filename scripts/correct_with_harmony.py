@@ -51,6 +51,7 @@ def correct_with_harmony(
         max_iter_harmony=n_max_iter,
         nclust=nclust,
         tau=tau,
+        random_state=0,
     )
 
     # harmonypy v1 returns Z_corr as (d, N), v2 returns (N, d)
@@ -77,6 +78,7 @@ def correct_with_harmony_pca(
         meta,
         batch_key,
         max_iter_harmony=n_max_iter,
+        random_state=0,
         nclust=300,  # Number of compounds
     )
 

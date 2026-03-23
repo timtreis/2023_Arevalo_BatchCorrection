@@ -262,7 +262,6 @@ rule optimize_scanorama:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export JAX_PLATFORMS=cpu && \
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
@@ -293,7 +292,6 @@ rule optimize_desc:
         nvidia_gpu=1
     shell:
         """
-        export JAX_PLATFORMS=cpu && \
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
