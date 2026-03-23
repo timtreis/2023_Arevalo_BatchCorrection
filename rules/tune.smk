@@ -205,8 +205,6 @@ rule optimize_harmony_v1:
         label_key=config["label_key"],
         trials=config["optuna_trials"],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -235,8 +233,6 @@ rule optimize_harmony_v2:
         label_key=config["label_key"],
         trials=config["optuna_trials"],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \

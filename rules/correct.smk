@@ -23,8 +23,6 @@ rule methods_combat:
         "containers/base.sif"  # combat only needs scanpy, which is in base
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -50,8 +48,6 @@ rule methods_sphering:
         method="ZCA-cor",
         column_norm="Metadata_JCP2022",
         values_norm="DMSO",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -78,8 +74,6 @@ rule methods_harmony_v1:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -107,8 +101,6 @@ rule methods_harmony_v2:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -135,8 +127,6 @@ rule methods_harmony_pca:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -163,8 +153,6 @@ rule methods_scanorama:
     params:
         method="scanorama",
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -190,8 +178,6 @@ rule methods_scanorama_pca:
     params:
         method="scanorama_pca",
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -215,8 +201,6 @@ rule methods_mnn:
         "../envs/mnn.yaml"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -542,8 +526,6 @@ rule methods_fastMNN:
         "containers/r.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -569,8 +551,6 @@ rule methods_seurat_cca:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="cca",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -597,8 +577,6 @@ rule methods_seurat_rpca:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="rpca",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
