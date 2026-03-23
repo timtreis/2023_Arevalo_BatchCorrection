@@ -94,7 +94,7 @@ def correct_with_scvi(
         n_layers=n_layers,
         dropout_rate=dropout_rate,
     )
-    vae.train(max_epochs=n_epochs, early_stopping=True, early_stopping_monitor="elbo_validation")
+    vae.train(max_epochs=n_epochs, early_stopping=True, early_stopping_monitor="validation_loss")
 
     # -------------  transfer to scANVI -------------
     scanvi = scvi.model.SCANVI.from_scvi_model(vae, unlabeled_category="Unknown")
@@ -107,7 +107,7 @@ def correct_with_scvi(
     scanvi.train(
         max_epochs=n_epochs,
         early_stopping=True,
-        early_stopping_monitor="elbo_validation",
+        early_stopping_monitor="validation_loss",
         plan_kwargs=plan_kwargs,
     )
 

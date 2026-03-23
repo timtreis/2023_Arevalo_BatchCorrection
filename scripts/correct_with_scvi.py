@@ -83,7 +83,7 @@ def correct_with_scvi(
     vae.train(
         max_epochs=n_epochs,
         early_stopping=True,
-        early_stopping_monitor="elbo_validation",
+        early_stopping_monitor="validation_loss",
     )
 
     vals = vae.get_latent_representation()
