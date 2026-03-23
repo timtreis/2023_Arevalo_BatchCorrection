@@ -1,6 +1,6 @@
 wildcard_constraints:
     criteria=r"target2|prod",
-    scenario=r"scenario_[a-zA-Z0-9]+",
+    scenario=r"scenario_[a-zA-Z0-9_]+",
     pipeline=r"[_a-zA-Z.~0-9\-]*",
 
 # Init config
@@ -17,16 +17,27 @@ scenario = config["scenario"]
 if isinstance(config["batch_key"], str):
     config["batch_key"] = [config["batch_key"]]
 
-if "COMPOUND" in config["plate_types"]:
+if "COMPOUND" in config.get("plate_types", []):
     criteria = "prod"
 else:
     criteria = "target2"
 
-rule write_parquet:
-    output:
-        "outputs/{scenario}/raw.parquet",
-    run:
-        pp.io.write_parquet(config["sources"], config["plate_types"], *output)
+if "raw_parquet" in config:
+    # External dataset: use pre-built parquet directly
+    rule link_raw_parquet:
+        input:
+            config["raw_parquet"]
+        output:
+            "outputs/{scenario}/raw.parquet",
+        shell:
+            "ln -sf $(realpath '{input}') '{output}'"
+else:
+    # JUMP-CP: assemble from per-plate parquets + metadata
+    rule write_parquet:
+        output:
+            "outputs/{scenario}/raw.parquet",
+        run:
+            pp.io.write_parquet(config["sources"], config["plate_types"], *output)
 
 
 rule compute_negcon_stats:
