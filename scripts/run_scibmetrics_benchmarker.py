@@ -56,6 +56,7 @@ def run_scibmetrics_benchmarker(
             batch_key=batch_key,
             label_key=eval_key,
             embedding_obsm_keys=methods.split(" "),
+            n_jobs=-1,
         )
         bm.benchmark()
 
