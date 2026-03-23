@@ -9,7 +9,7 @@ import optuna
 from desc import train, scale_bygroup
 
 from preprocessing import io
-from utils import scib_benchmark_embedding
+from utils import scib_benchmark_embedding, save_optuna_results
 
 logger = logging.getLogger(__name__)
 
@@ -81,17 +81,13 @@ def optimize_desc(
         n_trials = 2
     adata = io.to_anndata(input_path)
 
-    study = optuna.create_study(directions=["maximize", "maximize"])
+    study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(
         lambda trial: objective(trial, adata.copy(), batch_key, label_key, smoketest),
         n_trials=n_trials,
     )
 
-    df = study.trials_dataframe()
-    df = df.rename(columns={"values_0": "batch", "values_1": "bio"})
-    df["total"] = 0.6 * df["bio"] + 0.4 * df["batch"]
-    df = df.sort_values("total", ascending=False)
-    df.to_csv(output_path, index=False)
+    save_optuna_results(study, output_path)
 
 
 if __name__ == "__main__":

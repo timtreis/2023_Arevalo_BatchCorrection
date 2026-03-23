@@ -10,7 +10,7 @@ import scvi
 import torch.distributions as dist
 dist.Distribution.set_default_validate_args(False)    # disable global validation
 
-from utils import scib_benchmark_embedding
+from utils import scib_benchmark_embedding, save_optuna_results
 
 logger = logging.getLogger(__name__)
 
@@ -147,14 +147,10 @@ def optimize_scvi(
 
     adata = io.to_anndata(input_path)
 
-    study = optuna.create_study(directions=["maximize", "maximize"])
+    study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, params, multiple_covariates, smoketest), n_trials=n_trials)
 
-    df = study.trials_dataframe()
-    df = df.rename(columns={"values_0": "batch", "values_1": "bio"})
-    df["total"] = 0.6 * df["bio"] + 0.4 * df["batch"]
-    df = df.sort_values("total", ascending=False)
-    df.to_csv(output_path, index=False)
+    save_optuna_results(study, output_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Use Optuna to tune hyperparameters for scPoli.")

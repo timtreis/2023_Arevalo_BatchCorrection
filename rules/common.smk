@@ -12,6 +12,11 @@ import preprocessing as pp
 import plot
 
 scenario = config["scenario"]
+
+# Normalize batch_key to always be a list (scenarios 1-5 use a string, 6-8 use a list)
+if isinstance(config["batch_key"], str):
+    config["batch_key"] = [config["batch_key"]]
+
 if "COMPOUND" in config["plate_types"]:
     criteria = "prod"
 else:

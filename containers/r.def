@@ -31,3 +31,8 @@ From: rocker/r-ver:4.4.0
 
     # Seurat
     R -e "install.packages(c('Seurat', 'SeuratObject'), repos='${PPM}')"
+
+    # Python 3 + Optuna (for HPO orchestration via subprocess)
+    apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
+    pip3 install --no-cache-dir optuna
+    ln -sf /usr/bin/python3 /usr/local/bin/python

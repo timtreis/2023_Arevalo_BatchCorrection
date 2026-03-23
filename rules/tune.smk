@@ -313,7 +313,8 @@ rule optimize_desc:
 rule optimize_fastmnn:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/optimise_fastmnn.R"
+        script="scripts/optimise_fastmnn.py",
+        trial_runner="scripts/run_fastmnn_trial.R"
     output:
         path="outputs/{scenario}/optimization/optuna_fastmnn.csv"
     log:
@@ -327,7 +328,7 @@ rule optimize_fastmnn:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        Rscript '{input.script}' \
+        python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
@@ -340,7 +341,8 @@ rule optimize_fastmnn:
 rule optimize_seurat_cca:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/optimise_seurat.R"
+        script="scripts/optimise_seurat.py",
+        trial_runner="scripts/run_seurat_trial.R"
     output:
         path="outputs/{scenario}/optimization/optuna_seurat_cca.csv"
     log:
@@ -354,7 +356,7 @@ rule optimize_seurat_cca:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        Rscript '{input.script}' \
+        python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \
@@ -368,7 +370,8 @@ rule optimize_seurat_cca:
 rule optimize_seurat_rpca:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/optimise_seurat.R"
+        script="scripts/optimise_seurat.py",
+        trial_runner="scripts/run_seurat_trial.R"
     output:
         path="outputs/{scenario}/optimization/optuna_seurat_rpca.csv"
     log:
@@ -382,7 +385,7 @@ rule optimize_seurat_rpca:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        Rscript '{input.script}' \
+        python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
             --label_key '{params.label_key}' \

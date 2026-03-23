@@ -5,6 +5,9 @@ import anndata as ad
 
 logger = logging.getLogger(__name__)
 
+# Re-export from optuna_utils so existing imports keep working
+from optuna_utils import save_optuna_results  # noqa: F401
+
 def scib_benchmark_embedding(
     adata: ad.AnnData,
     batch_key: str,
