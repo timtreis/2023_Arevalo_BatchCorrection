@@ -1,0 +1,2 @@
+number,batch,bio,params_dropout_rate,params_n_hidden,params_n_latent,params_n_layers,state,total
+0,,,0.1,128,30,1,COMPLETE,

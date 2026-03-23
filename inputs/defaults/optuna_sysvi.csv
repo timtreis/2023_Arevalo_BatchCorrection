@@ -1,0 +1,2 @@
+number,batch,bio,params_dropout_rate,params_kl_weight,params_n_hidden,params_n_latent,params_n_layers,params_n_prior_components,params_prior,params_use_z_distance_cycle_weight,params_z_distance_cycle_weight,state,total
+0,,,0.1,1.0,128,30,2,5,standard_normal,False,0,COMPLETE,

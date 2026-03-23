@@ -1,4 +1,19 @@
 
+# When use_defaults is set, skip HPO and use pre-made default parameter files.
+# This rule uses a {method} wildcard that matches all optimization outputs,
+# so snakemake will prefer it over the method-specific rules below.
+if config.get("use_defaults", False):
+    ruleorder: use_default_params > optimize_scpoli > optimize_scvi_single > optimize_scvi_multi > optimize_scanvi_single > optimize_scanvi_multi > optimize_sysvi > optimize_harmony_v1 > optimize_harmony_v2 > optimize_scanorama > optimize_desc > optimize_fastmnn > optimize_seurat_cca > optimize_seurat_rpca
+
+    rule use_default_params:
+        input:
+            "inputs/defaults/optuna_{method}.csv"
+        output:
+            "outputs/{scenario}/optimization/optuna_{method}.csv"
+        shell:
+            "cp '{input}' '{output}'"
+
+
 rule optimize_scpoli:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",

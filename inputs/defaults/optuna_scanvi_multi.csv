@@ -1,0 +1,2 @@
+number,batch,bio,params_classification_ratio,params_n_epochs_kl_warmup,state,total
+0,,,50,10,COMPLETE,
