@@ -38,7 +38,7 @@ def objective(
     n_epochs_kl_warmup = trial.suggest_int("n_epochs_kl_warmup", 5, 50)
     linear_classifier = trial.suggest_categorical("linear_classifier", [True, False])
 
-    n_epochs = 2 if smoketest else 100
+    n_epochs = 2 if smoketest else 50
 
     # make sure counts stay ≥0
     adata.X -= adata.X.min()

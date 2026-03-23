@@ -30,7 +30,7 @@ def objective(
     n_layers = trial.suggest_int("n_layers", 1, 3)
     dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.5)
     # learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
-    n_epochs = 2 if smoketest else 100
+    n_epochs = 2 if smoketest else 50
 
     # Preprocess data: subtract the minimum to ensure non-negative values (if needed)
     min_value = adata.X.min()
