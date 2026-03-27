@@ -1,10 +1,10 @@
 #!/usr/bin/env Rscript
 # Single-trial runner for fastMNN. Called by optimise_fastmnn.py via subprocess.
 # Prints RESULT:<batch_score>,<bio_score> on success, exits 1 on failure.
+# Supports --cached_rds for fast loading (pre-built data).
 
 suppressPackageStartupMessages({
   library(optparse)
-  library(arrow)
   library(batchelor)
   library(SingleCellExperiment)
 })
@@ -38,7 +38,9 @@ compute_asw_bio <- function(corrected_mat, bio_labels) {
 # --- Main ---
 
 option_list <- list(
-  make_option("--input_data", type = "character"),
+  make_option("--cached_rds", type = "character", default = NULL,
+              help = "Path to cached .rds (skips parquet loading)"),
+  make_option("--input_data", type = "character", default = NULL),
   make_option("--batch_key", type = "character"),
   make_option("--label_key", type = "character"),
   make_option("--k", type = "integer"),
@@ -49,15 +51,25 @@ option_list <- list(
 
 opt <- parse_args(OptionParser(option_list = option_list))
 
-parquet_data <- as.data.frame(read_parquet(opt$input_data))
-col_names <- names(parquet_data)
-features_cols <- col_names[!grepl("^Metadata_", col_names)]
-features <- parquet_data[, features_cols]
-batch_info <- parquet_data[[opt$batch_key]]
-bio_info <- parquet_data[[opt$label_key]]
+if (!is.null(opt$cached_rds) && file.exists(opt$cached_rds)) {
+  # Fast path: load pre-cached data
+  cached <- readRDS(opt$cached_rds)
+  features_t <- cached$features_t
+  batch_info <- cached$batch_info
+  bio_info <- cached$bio_info
+} else {
+  # Fallback: load from parquet
+  suppressPackageStartupMessages(library(arrow))
+  parquet_data <- as.data.frame(read_parquet(opt$input_data))
+  col_names <- names(parquet_data)
+  features_cols <- col_names[!grepl("^Metadata_", col_names)]
+  features_t <- t(parquet_data[, features_cols])
+  batch_info <- parquet_data[[opt$batch_key]]
+  bio_info <- parquet_data[[opt$label_key]]
+}
 
 corrected <- fastMNN(
-  t(features), batch = batch_info,
+  features_t, batch = batch_info,
   k = opt$k, d = opt$d,
   ndist = opt$ndist, prop.k = opt$prop_k
 )

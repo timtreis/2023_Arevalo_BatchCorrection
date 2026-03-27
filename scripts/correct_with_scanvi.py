@@ -3,6 +3,7 @@ import argparse
 import scvi
 import pandas as pd
 from preprocessing import io
+from utils import coarsen_labels, SEMISUP_UNLABELED
 import torch.distributions as dist
 dist.Distribution.set_default_validate_args(False)    # disable global validation
 
@@ -56,6 +57,9 @@ def correct_with_scvi(
 
     adata = io.to_anndata(dframe_path)
     meta = adata.obs.reset_index(drop=True).copy()
+
+    # Mark rare compounds as unlabeled for semi-supervised training
+    coarsen_labels(adata, label_key, batch_key)
 
     min_value = adata.X.min()
     adata.X -= min_value

@@ -8,7 +8,7 @@ import anndata as ad
 import optuna
 from scarches.models.scpoli import scPoli
 
-from utils import scib_benchmark_embedding, save_optuna_results
+from utils import scib_benchmark_embedding, save_optuna_results, coarsen_labels
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,7 @@ def objective(
         n_epochs=n_train_epochs,
         pretraining_epochs=n_pretrain_epochs,
         use_early_stopping=True,
+        reload_best=True,
         alpha_epoch_anneal=alpha_epoch_anneal,
         eta=eta,
     )
@@ -98,6 +99,12 @@ def optimize_scpoli(
     if smoketest:
         n_trials = 2
     adata = io.to_anndata(input_path)
+
+    # Mark rare compounds as unlabeled for semi-supervised training
+    coarsen_labels(adata, label_key, batch_key)
+
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
 
     study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, smoketest), n_trials=n_trials)

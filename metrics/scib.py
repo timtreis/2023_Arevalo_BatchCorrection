@@ -148,16 +148,13 @@ def _merge_with_duplication(
     )
     if copy_obsm:
         for key in adata.obsm.keys():
-            obsm = adata.obsm[key].iloc[replicate_indices, :]
-            obsm = obsm.reset_index(drop=True)
-            obsm.index = adata_new.obs.index
-            adata_new.obsm[key] = obsm
+            adata_new.obsm[key] = adata.obsm[key][replicate_indices, :]
 
     return adata_new
 
 def _subset_obs_based_on_eval_label_presence(meta, feats, eval_key) -> pd.DataFrame:
     # using mask because pd.DataFrames and np.arrays index differently
-    valid_mask = meta[eval_key].isna().values
+    valid_mask = ~meta[eval_key].isna().values
     feats_subset = feats[valid_mask]
     meta_subset = meta.loc[valid_mask].copy()
     
@@ -179,8 +176,8 @@ def aggregate_method_outputs_into_adata(
     adata = to_anndata(unintegrated_path)
 
     for name, path in name_path_mapping.items():
-        integrated_adata = to_anndata(path).to_df()
-        adata.obsm[name] = integrated_adata
+        integrated_adata = to_anndata(path)
+        adata.obsm[name] = integrated_adata.X
 
     adata.write_h5ad(output_path, compression="gzip")
 

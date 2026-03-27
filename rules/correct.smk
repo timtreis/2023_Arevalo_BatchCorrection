@@ -14,7 +14,6 @@ rule methods_combat:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
         script="scripts/correct_with_combat.py",
-        parameter_path="outputs/{scenario}/optimization/optuna_harmony_v2.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_combat.parquet"
     log:
@@ -28,7 +27,6 @@ rule methods_combat:
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
-            --parameter_path '{input.parameter_path}' \
             --batch_key '{params.batch_key}' \
             --output_path '{output.path}' \
             &> '{log}'

@@ -1,2 +1,2 @@
 number,batch,bio,params_alpha_epoch_anneal,params_embedding_dims,params_eta,params_latent_dim,params_layer_0_size,params_num_layers,params_pretrain_to_train_ratio,state,total
-0,,,200,10,0.5,64,256,1,0.5,COMPLETE,
+0,,,100,10,1.0,10,256,1,0.5,COMPLETE,

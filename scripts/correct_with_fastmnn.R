@@ -46,7 +46,12 @@ if (!is.null(opt$parameter_path)) {
   d_val = as.integer(best$params_d)
   ndist_val = as.integer(best$params_ndist)
   prop_k_val = best$params_prop_k
-  cat(sprintf("Using tuned params: k=%d, d=%d, ndist=%d, prop.k=%.3f\n", k_val, d_val, ndist_val, prop_k_val))
+  if (is.na(prop_k_val)) prop_k_val = NULL
+  if (!is.null(prop_k_val)) {
+    cat(sprintf("Using tuned params: k=%d, d=%d, ndist=%d, prop.k=%.3f\n", k_val, d_val, ndist_val, prop_k_val))
+  } else {
+    cat(sprintf("Using tuned params: k=%d, d=%d, ndist=%d, prop.k=NULL\n", k_val, d_val, ndist_val))
+  }
 }
 
 parquet_data = read_parquet(input_file)

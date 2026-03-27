@@ -55,15 +55,17 @@ def objective(
     else:
         actual_batch_key = batch_key
 
+    # labels_key is intentionally omitted: scVI is unsupervised and does not
+    # use labels during training.  Registering a high-cardinality label column
+    # (e.g. 82 K compounds) wastes memory without any benefit.
     if multiple_covariates:
         scvi.model.SCVI.setup_anndata(
             adata,
             batch_key=actual_batch_key,
             categorical_covariate_keys=categorical_covariate_keys,
-            labels_key=label_key,
         )
     else:
-        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key, labels_key=label_key)
+        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key)
 
     vae = scvi.model.SCVI(
         adata,
@@ -111,6 +113,10 @@ def optimize_scvi(
         n_trials = 2
     adata = io.to_anndata(input_path)
     print(multiple_covariates)
+
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
+
     study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, multiple_covariates, smoketest), n_trials=n_trials)
 

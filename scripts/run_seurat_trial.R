@@ -1,16 +1,17 @@
 #!/usr/bin/env Rscript
 # Single-trial runner for Seurat CCA/RPCA. Called by optimise_seurat.py via subprocess.
 # Prints RESULT:<batch_score>,<bio_score> on success, exits 1 on failure.
+# Supports --cached_rds for fast loading (pre-built Seurat object with PCA).
 
 suppressPackageStartupMessages({
   library(optparse)
-  library(arrow)
   library(Seurat)
-  library(dplyr)
+  library(future)
 })
 
-# RPCA integration can exceed the default 500 MiB limit for future globals
-options(future.globals.maxSize = 4 * 1024^3)
+# Force sequential plan to avoid serializing large globals to parallel workers
+plan(sequential)
+options(future.globals.maxSize = +Inf)
 
 # --- Lightweight evaluation metrics (pure R) ---
 
@@ -41,7 +42,9 @@ compute_pcr_bio <- function(corrected_mat, bio_labels) {
 # --- Main ---
 
 option_list <- list(
-  make_option("--input_data", type = "character"),
+  make_option("--cached_rds", type = "character", default = NULL,
+              help = "Path to cached Seurat .rds (skips parquet loading)"),
+  make_option("--input_data", type = "character", default = NULL),
   make_option("--batch_key", type = "character"),
   make_option("--label_key", type = "character"),
   make_option("--method", type = "character"),
@@ -52,27 +55,31 @@ option_list <- list(
 
 opt <- parse_args(OptionParser(option_list = option_list))
 
-parquet_data <- as.data.frame(read_parquet(opt$input_data))
-col_names <- names(parquet_data)
-metadata_cols <- col_names[grepl("^Metadata_", col_names)]
-features_cols <- col_names[!grepl("^Metadata_", col_names)]
+if (!is.null(opt$cached_rds) && file.exists(opt$cached_rds)) {
+  # Fast path: load pre-built Seurat object
+  obj <- readRDS(opt$cached_rds)
+} else {
+  # Fallback: build from parquet (backwards compatible)
+  suppressPackageStartupMessages(library(arrow))
+  parquet_data <- as.data.frame(read_parquet(opt$input_data))
+  col_names <- names(parquet_data)
+  metadata_cols <- col_names[grepl("^Metadata_", col_names)]
+  features_cols <- col_names[!grepl("^Metadata_", col_names)]
 
-feat_names_clean <- gsub("_", "-", features_cols)
-expr_mat <- as.matrix(parquet_data[, features_cols])
-colnames(expr_mat) <- feat_names_clean
-rownames(expr_mat) <- paste0("cell_", seq_len(nrow(expr_mat)))
-meta <- parquet_data[, metadata_cols, drop = FALSE]
-rownames(meta) <- rownames(expr_mat)
+  feat_names_clean <- gsub("_", "-", features_cols)
+  expr_mat <- as.matrix(parquet_data[, features_cols])
+  colnames(expr_mat) <- feat_names_clean
+  rownames(expr_mat) <- paste0("cell_", seq_len(nrow(expr_mat)))
+  meta <- parquet_data[, metadata_cols, drop = FALSE]
+  rownames(meta) <- rownames(expr_mat)
 
-obj <- CreateSeuratObject(counts = t(expr_mat), meta.data = meta)
-obj <- SetAssayData(object = obj, layer = "data", new.data = t(expr_mat))
-
-# Split into layers by batch for v5 integration
-obj[["RNA"]] <- split(obj[["RNA"]], f = obj@meta.data[[opt$batch_key]])
-
-VariableFeatures(obj) <- feat_names_clean
-obj <- ScaleData(obj, verbose = FALSE)
-obj <- RunPCA(obj, npcs = opt$dims, verbose = FALSE)
+  obj <- CreateSeuratObject(counts = t(expr_mat), meta.data = meta)
+  obj <- SetAssayData(object = obj, layer = "data", new.data = t(expr_mat))
+  obj[["RNA"]] <- split(obj[["RNA"]], f = obj@meta.data[[opt$batch_key]])
+  VariableFeatures(obj) <- feat_names_clean
+  obj <- ScaleData(obj, verbose = FALSE)
+  obj <- RunPCA(obj, npcs = opt$dims, verbose = FALSE)
+}
 
 integration_method <- if (opt$method == "cca") CCAIntegration else RPCAIntegration
 obj <- IntegrateLayers(

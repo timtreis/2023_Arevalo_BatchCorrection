@@ -29,6 +29,23 @@ METHODS = [
     # "cpDistiller_SBP",
 ]
 
+# DESC has a hardcoded 200K cell limit that causes crashes on larger datasets.
+# Skip it automatically when the preprocessed input exceeds that threshold.
+DESC_MAX_CELLS = 200_000
+_preproc_path = f"outputs/{config.get('scenario', '')}/{config.get('preproc', 'mad_int_featselect')}.parquet"
+try:
+    import pyarrow.parquet as pq
+    _n_cells = pq.read_metadata(_preproc_path).num_rows
+    if _n_cells > DESC_MAX_CELLS:
+        METHODS = [m for m in METHODS if m != "desc"]
+        print(f"NOTE: Skipping DESC (input has {_n_cells:,} cells, limit is {DESC_MAX_CELLS:,})")
+except (FileNotFoundError, Exception):
+    pass  # file doesn't exist yet (preprocessing not done); keep desc in the list
+
+# NOTE: scANVI and scPoli use label coarsening (utils.coarsen_labels) to handle
+# high-cardinality label columns.  Compounds appearing in <5 batches are marked
+# "Unknown" during training.  No Snakefile-level skip is needed.
+
 
 # Load rules
 include: "rules/common.smk"

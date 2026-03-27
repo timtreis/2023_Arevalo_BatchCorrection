@@ -107,7 +107,12 @@ def calculate_map(
     )
     
     meta = metadata.loc[idx]
-    vals = embedding.loc[idx].values # copairs needs np.array
+    if isinstance(embedding, pd.DataFrame):
+        vals = embedding.loc[idx].values
+    else:
+        # numpy array — convert label index to positional for slicing
+        pos_idx = metadata.index.get_indexer(idx)
+        vals = embedding[pos_idx]
     
     if mode == "negcon":
         _group_negcons(meta)
@@ -201,4 +206,4 @@ def mean_average_precision(
        
     tidy_results.reset_index(drop=True).to_parquet(output_path, index=False)
 
-    logger.info(f"Finished calculating mAP scores for all {len(methods.keys())} embeddings.")
+    logger.info(f"Finished calculating mAP scores for all {len(results)} eval_keys.")

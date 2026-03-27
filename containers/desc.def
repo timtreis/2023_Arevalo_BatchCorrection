@@ -21,6 +21,11 @@ From: containers/base.sif
     # setuptools needed for pkg_resources (required by louvain import)
     python -m pip install --no-cache-dir \
         optuna \
-        "jax[cpu]==0.4.30" \
-        "jaxlib==0.4.30" \
+        "jax[cuda12]==0.4.30" \
+        "jaxlib[cuda12]==0.4.30" \
         "setuptools<81"
+
+    # LAST: force cuDNN 9.8 — torch/jax pin 9.1 but jaxlib needs 9.8.
+    # Must be last so nothing can downgrade it.
+    python -m pip install --no-cache-dir --force-reinstall --no-deps \
+        "nvidia-cudnn-cu12==9.8.0.87"

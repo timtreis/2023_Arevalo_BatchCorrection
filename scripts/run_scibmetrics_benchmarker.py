@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_scibmetrics_benchmarker(
-    adata_path, output_paths, batch_key, eval_keys, methods
+    adata_path, output_path, batch_key, eval_keys, methods
 ):
     adata = sc.read_h5ad(adata_path)
 
@@ -81,7 +81,7 @@ def run_scibmetrics_benchmarker(
     df_tidy = df_tidy[["eval_key", "Method", "Metric", "Value", "Metric_Type"]]
     df_tidy.columns = df_tidy.columns.str.replace(r"\s+", "_", regex=True).str.lower()
     cols_to_modify = ["method", "metric", "metric_type"]
-    df_tidy[cols_to_modify] = df_tidy[cols_to_modify].applymap(
+    df_tidy[cols_to_modify] = df_tidy[cols_to_modify].map(
         lambda col: col.replace(" ", "_").lower() if isinstance(col, str) else col
     )
 

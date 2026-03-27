@@ -13,11 +13,17 @@ from utils import scib_benchmark_embedding, save_optuna_results
 
 logger = logging.getLogger(__name__)
 
+# Number of PCs for HPO trials. Reduces 1040 features to 50 dims, making
+# harmony correction ~20× faster. The final correction uses full features.
+_HPO_N_PCS = 50
+
+
 def objective(
     trial,
-    adata: ad.AnnData, 
-    batch_key: str, 
-    label_key: str, 
+    pca_mat: np.ndarray,
+    obs: pd.DataFrame,
+    batch_key: str,
+    label_key: str,
     smoketest: bool = False,
 ):
     # Silence output
@@ -30,33 +36,33 @@ def objective(
     nclust = trial.suggest_int("nclust", 2, 500)
     tau    = trial.suggest_float("tau", 0.0, 1.0)
 
-    # Ensure the data matrix is a dense numpy array
-    if not isinstance(adata.X, np.ndarray):
-        data_mat = adata.X.toarray()
-    else:
-        data_mat = adata.X
-    meta_data = adata.obs.copy()
-
-    ho = run_harmony(
-        data_mat=data_mat,
-        meta_data=meta_data,
+    # Use GPU if available (harmonypy >= 0.2 supports device parameter)
+    import inspect
+    harmony_kwargs = dict(
+        data_mat=pca_mat,
+        meta_data=obs,
         vars_use=batch_key,
         theta=theta,
         lamb=lamb,
         sigma=sigma,
         nclust=nclust,
         tau=tau,
-        random_state=0
+        random_state=0,
     )
+    if "device" in inspect.signature(run_harmony).parameters:
+        import torch
+        harmony_kwargs["device"] = "cuda" if torch.cuda.is_available() else "cpu"
+
+    ho = run_harmony(**harmony_kwargs)
 
     # harmonypy v1 returns (d, N), v2 returns (N, d)
     vals = ho.result()
-    if vals.shape[0] != len(adata):
+    if vals.shape[0] != len(obs):
         vals = vals.T
     features = [f"harmony_{i}" for i in range(vals.shape[1])]
     integrated_adata = ad.AnnData(
-        X=pd.DataFrame(vals, columns=features, index=adata.obs_names),
-        obs=adata.obs.copy()
+        X=pd.DataFrame(vals, columns=features, index=obs.index),
+        obs=obs.copy()
     )
 
     # Evaluate the integration using scIB metrics
@@ -85,8 +91,23 @@ def optimize_harmony(
         n_trials = 2
     adata = io.to_anndata(input_path)
 
+    # PCA reduction for HPO speed — harmony on 50 PCs instead of 1040 features.
+    # The tuned hyperparameters transfer to the full-feature correction.
+    from sklearn.decomposition import PCA
+    n_pcs = min(_HPO_N_PCS, adata.X.shape[1])
+    logger.info("Computing PCA (%d components) for HPO...", n_pcs)
+    X = adata.X if isinstance(adata.X, np.ndarray) else adata.X.toarray()
+    pca = PCA(n_components=n_pcs, random_state=42)
+    pca_mat = pca.fit_transform(X)
+    obs = adata.obs.copy()
+    logger.info("PCA done. Variance explained: %.1f%%", 100 * pca.explained_variance_ratio_.sum())
+
+    # Warm up JAX JIT cache before trials so compilation cost is paid once
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
+
     study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective(trial, adata, batch_key, label_key, smoketest), n_trials=n_trials)
+    study.optimize(lambda trial: objective(trial, pca_mat, obs, batch_key, label_key, smoketest), n_trials=n_trials)
 
     save_optuna_results(study, output_path)
 

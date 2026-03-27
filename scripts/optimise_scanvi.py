@@ -10,28 +10,20 @@ import scvi
 import torch.distributions as dist
 dist.Distribution.set_default_validate_args(False)    # disable global validation
 
-from utils import scib_benchmark_embedding, save_optuna_results
+from utils import scib_benchmark_embedding, save_optuna_results, coarsen_labels
 
 logger = logging.getLogger(__name__)
 
 def objective(
     trial,
-    adata: ad.AnnData,
-    batch_key: str,
+    pretrained_vae,
+    actual_batch_key: str,
     label_key: str,
-    params: dict,
-    multiple_covariates: bool = False,
     smoketest: bool = False,
 ):
 
     # silence stdout
     sys.stdout = open(os.devnull, "w")
-
-    # ----------  fixed scVI architecture ----------
-    n_hidden = params["params_n_hidden"]
-    n_latent = params["params_n_latent"]
-    n_layers = params["params_n_layers"]
-    dropout_rate = params["params_dropout_rate"]
 
     # ----------  scANVI hyper-parameters to tune ----------
     classification_ratio = trial.suggest_int("classification_ratio", 20, 80)
@@ -40,51 +32,9 @@ def objective(
 
     n_epochs = 2 if smoketest else 50
 
-    # make sure counts stay ≥0
-    adata.X -= adata.X.min()
-
-    # -------------  anndata setup -------------
-    if multiple_covariates:
-        if isinstance(batch_key, list) and len(batch_key) == 1:
-            batch_key = batch_key[0]
-
-        batch_key = batch_key.split(",")
-
-        if isinstance(batch_key, list):
-            actual_batch_key = batch_key[0]
-            assert isinstance(actual_batch_key, str)
-
-            categorical_covariate_keys = batch_key[1:]
-            if isinstance(categorical_covariate_keys, str):
-                categorical_covariate_keys = [categorical_covariate_keys]
-        else:
-            actual_batch_key = batch_key
-            categorical_covariate_keys = [None]
-    else:
-        actual_batch_key = batch_key
-
-    if multiple_covariates:
-        scvi.model.SCVI.setup_anndata(
-            adata,
-            batch_key=actual_batch_key,
-            categorical_covariate_keys=categorical_covariate_keys,
-            labels_key=label_key,
-        )
-    else:
-        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key, labels_key=label_key)
-    # -------------  pre-train SCVI -------------
-    vae = scvi.model.SCVI(
-        adata,
-        n_hidden=n_hidden,
-        n_latent=n_latent,
-        n_layers=n_layers,
-        dropout_rate=dropout_rate,
-    )
-    vae.train(max_epochs=n_epochs, early_stopping=True, early_stopping_monitor="validation_loss")
-
     # -------------  transfer to scANVI -------------
     scanvi = scvi.model.SCANVI.from_scvi_model(
-        vae, 
+        pretrained_vae,
         unlabeled_category="Unknown",
         linear_classifier=linear_classifier,
     )
@@ -105,8 +55,8 @@ def objective(
     vals = scanvi.get_latent_representation()
     features = [f"scanvi_{i}" for i in range(vals.shape[1])]
     integrated = ad.AnnData(
-        X=pd.DataFrame(vals, columns=features, index=adata.obs_names),
-        obs=adata.obs.copy(),
+        X=pd.DataFrame(vals, columns=features, index=scanvi.adata.obs_names),
+        obs=scanvi.adata.obs.copy(),
     )
 
     batch_score, bio_score = scib_benchmark_embedding(
@@ -147,8 +97,62 @@ def optimize_scvi(
 
     adata = io.to_anndata(input_path)
 
+    # Mark rare compounds as unlabeled for semi-supervised training
+    coarsen_labels(adata, label_key, batch_key)
+
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
+
+    # ----------  resolve batch key ----------
+    if multiple_covariates:
+        if isinstance(batch_key, list) and len(batch_key) == 1:
+            batch_key = batch_key[0]
+
+        batch_key = batch_key.split(",")
+
+        if isinstance(batch_key, list):
+            actual_batch_key = batch_key[0]
+            assert isinstance(actual_batch_key, str)
+
+            categorical_covariate_keys = batch_key[1:]
+            if isinstance(categorical_covariate_keys, str):
+                categorical_covariate_keys = [categorical_covariate_keys]
+        else:
+            actual_batch_key = batch_key
+            categorical_covariate_keys = [None]
+    else:
+        actual_batch_key = batch_key
+
+    # make sure counts stay ≥0
+    adata.X -= adata.X.min()
+
+    # ----------  anndata setup ----------
+    if multiple_covariates:
+        scvi.model.SCVI.setup_anndata(
+            adata,
+            batch_key=actual_batch_key,
+            categorical_covariate_keys=categorical_covariate_keys,
+            labels_key=label_key,
+        )
+    else:
+        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key, labels_key=label_key)
+
+    # ----------  train scVI once (architecture is fixed) ----------
+    n_epochs = 2 if smoketest else 50
+    print("\nPre-training scVI base model (one-time)...")
+    vae = scvi.model.SCVI(
+        adata,
+        n_hidden=int(params["params_n_hidden"]),
+        n_latent=int(params["params_n_latent"]),
+        n_layers=int(params["params_n_layers"]),
+        dropout_rate=params["params_dropout_rate"],
+    )
+    vae.train(max_epochs=n_epochs, early_stopping=True, early_stopping_monitor="validation_loss")
+    print("scVI base model trained. Starting scANVI HPO...\n")
+
+    # ----------  tune scANVI head ----------
     study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, params, multiple_covariates, smoketest), n_trials=n_trials)
+    study.optimize(lambda trial: objective(trial, vae, actual_batch_key, label_key, smoketest), n_trials=n_trials)
 
     save_optuna_results(study, output_path)
 

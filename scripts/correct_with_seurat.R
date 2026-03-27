@@ -41,7 +41,9 @@ if (!is.null(opt$parameter_path)) {
   cat(sprintf("Using tuned params: dims=%d, k.anchor=%d, k.weight=%d\n", dims_val, k_anchor_val, k_weight_val))
 }
 
-options(future.globals.maxSize = 32 * 1024^3)
+# Force sequential plan to avoid serializing large globals to parallel workers
+plan(sequential)
+options(future.globals.maxSize = +Inf)
 
 parquet_data <- as.data.frame(read_parquet(opt$input_data))
 col_names <- names(parquet_data)

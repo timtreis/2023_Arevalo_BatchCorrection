@@ -17,7 +17,7 @@
     ],
     "batch_key": ["Metadata_Source", "Metadata_Batch"],
     "label_key": "Metadata_JCP2022",
-    "eval_key": ["Metadata_JCP2022"],
+    "eval_key": ["Metadata_JCP2022", "Metadata_DRH_MOA"],
     "use_defaults": true,
     "optuna_trials": 30
 }

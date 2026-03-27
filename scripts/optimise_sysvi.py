@@ -109,6 +109,9 @@ def optimize_sysvi(
         n_trials = 2
     adata = io.to_anndata(input_path)
 
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
+
     study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, smoketest), n_trials=n_trials)
 

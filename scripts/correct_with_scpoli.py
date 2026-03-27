@@ -3,6 +3,7 @@ import argparse
 from typing import List, Union, Optional, Literal
 from scarches.models.scpoli import scPoli
 from preprocessing import io
+from utils import coarsen_labels
 import scanpy as sc
 import anndata as ad
 import pandas as pd
@@ -61,6 +62,9 @@ def correct_with_scpoli(
     adata = io.to_anndata(dframe_path)
     meta = adata.obs.reset_index(drop=True).copy()
 
+    # Mark rare compounds as unlabeled for semi-supervised training
+    coarsen_labels(adata, label_key, batch_key)
+
     if preproc == "pca":
         logger.info("Applying PCA preprocessing with Scanpy")
         sc.pp.pca(adata, svd_solver="arpack", n_comps=50)
@@ -85,6 +89,7 @@ def correct_with_scpoli(
         n_epochs=n_train_epochs,
         pretraining_epochs=n_pretrain_epochs,
         use_early_stopping=True,
+        reload_best=True,
         alpha_epoch_anneal=alpha_epoch_anneal,
         eta=eta,
     )

@@ -5,12 +5,17 @@ import argparse
 import pandas as pd
 import anndata as ad
 import optuna
+import numpy as np
 import scanorama
 
 from preprocessing import io
 from utils import scib_benchmark_embedding, save_optuna_results
 
 logger = logging.getLogger(__name__)
+
+# Number of PCs for HPO trials. Reduces 1040 features to 50 dims, making
+# scanorama correction much faster. The final correction uses full features.
+_HPO_N_PCS = 50
 
 
 def objective(
@@ -73,9 +78,23 @@ def optimize_scanorama(
         n_trials = 2
     adata = io.to_anndata(input_path)
 
+    # PCA reduction for HPO speed — scanorama on 50 PCs instead of 1040 features.
+    from sklearn.decomposition import PCA
+    n_pcs = min(_HPO_N_PCS, adata.X.shape[1])
+    logger.info("Computing PCA (%d components) for HPO...", n_pcs)
+    X = adata.X if isinstance(adata.X, np.ndarray) else adata.X.toarray()
+    pca = PCA(n_components=n_pcs, random_state=42)
+    X_pca = pca.fit_transform(X)
+    logger.info("PCA done. Variance explained: %.1f%%", 100 * pca.explained_variance_ratio_.sum())
+
+    adata_pca = ad.AnnData(X=X_pca, obs=adata.obs.copy())
+
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
+
     study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(
-        lambda trial: objective(trial, adata, batch_key, label_key, smoketest),
+        lambda trial: objective(trial, adata_pca, batch_key, label_key, smoketest),
         n_trials=n_trials,
     )
 
