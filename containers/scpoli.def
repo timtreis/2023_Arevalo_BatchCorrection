@@ -58,4 +58,4 @@ From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
         "scarches==0.6.1" \
         scib-metrics \
         optuna \
-        "jax[cpu]"
+        "jax[cuda12]"

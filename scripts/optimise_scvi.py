@@ -8,7 +8,7 @@ import anndata as ad
 import optuna
 import scvi
 
-from utils import scib_benchmark_embedding
+from utils import scib_benchmark_embedding, save_optuna_results
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +55,17 @@ def objective(
     else:
         actual_batch_key = batch_key
 
+    # labels_key is intentionally omitted: scVI is unsupervised and does not
+    # use labels during training.  Registering a high-cardinality label column
+    # (e.g. 82 K compounds) wastes memory without any benefit.
     if multiple_covariates:
         scvi.model.SCVI.setup_anndata(
             adata,
             batch_key=actual_batch_key,
             categorical_covariate_keys=categorical_covariate_keys,
-            labels_key=label_key,
         )
     else:
-        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key, labels_key=label_key)
+        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key)
 
     vae = scvi.model.SCVI(
         adata,
@@ -76,7 +78,7 @@ def objective(
     vae.train(
         max_epochs=n_epochs,
         early_stopping=True,
-        early_stopping_monitor="elbo_validation",
+        early_stopping_monitor="validation_loss",
     )
 
     vals = vae.get_latent_representation()
@@ -111,14 +113,14 @@ def optimize_scvi(
         n_trials = 2
     adata = io.to_anndata(input_path)
     print(multiple_covariates)
-    study = optuna.create_study(directions=["maximize", "maximize"])
+
+    from utils import warmup_benchmark
+    warmup_benchmark(batch_key, label_key)
+
+    study = optuna.create_study(directions=["maximize", "maximize"], sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective(trial, adata.copy(), batch_key, label_key, multiple_covariates, smoketest), n_trials=n_trials)
 
-    df = study.trials_dataframe()
-    df = df.rename(columns={"values_0": "batch", "values_1": "bio"})
-    df["total"] = 0.6 * df["bio"] + 0.4 * df["batch"]
-    df = df.sort_values("total", ascending=False)
-    df.to_csv(output_path, index=False)
+    save_optuna_results(study, output_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Use Optuna to tune hyperparameters for scPoli.")

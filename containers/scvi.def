@@ -2,10 +2,13 @@ Bootstrap: localimage
 From: containers/base.sif
 
 %environment
-    # scvi trains with PyTorch on GPU; scib-metrics uses JAX for benchmarking.
-    # JAX and PyTorch cannot both hold cuDNN in the same process — JAX loses.
-    # The latent representations are small, so CPU is fine for the benchmark step.
-    export JAX_PLATFORMS=cpu
+    # Both PyTorch (scvi training) and JAX (scib-metrics evaluation) use GPU.
+    # XLA_PYTHON_CLIENT_PREALLOCATE=false (in base.def) prevents JAX from
+    # grabbing all GPU memory, allowing coexistence with PyTorch.
+    export JAX_PLATFORMS=""
+    # Prepend pip-installed cuDNN to LD_LIBRARY_PATH so JAX finds it
+    # instead of the system cuDNN 8 from the base image.
+    export LD_LIBRARY_PATH=/usr/local/lib/python3.11/dist-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
 
 %post
     # PyTorch with CUDA 12.1 support
@@ -21,3 +24,8 @@ From: containers/base.sif
         "scvi-tools>=1.4.1" \
         optuna \
         torchmetrics
+
+    # LAST: force cuDNN 9.8 — torch and jax pin 9.1 but jaxlib needs 9.8.
+    # Must be last so nothing can downgrade it.
+    python -m pip install --no-cache-dir --force-reinstall --no-deps \
+        "nvidia-cudnn-cu12==9.8.0.87"

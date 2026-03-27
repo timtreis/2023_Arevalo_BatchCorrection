@@ -5,6 +5,7 @@ import pandas as pd
 
 from scib_metrics.benchmark import Benchmarker
 from metrics.scib import (
+    _ensure_inchikey,
     _merge_with_duplication,
     _load_opentargets_moa_info,
     _load_repurposinghub_moa_info,
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_scibmetrics_benchmarker(
-    adata_path, output_paths, batch_key, eval_keys, methods
+    adata_path, output_path, batch_key, eval_keys, methods
 ):
     adata = sc.read_h5ad(adata_path)
 
@@ -42,8 +43,8 @@ def run_scibmetrics_benchmarker(
 
         if eval_key in eval_key_function_mapping:
             meta = eval_key_function_mapping[eval_key]()
-            print(meta)
-            adata_for_eval = _merge_with_duplication(adata.copy(), meta)
+            adata_copy = _ensure_inchikey(adata.copy())
+            adata_for_eval = _merge_with_duplication(adata_copy, meta)
             adata_for_eval = adata_for_eval[~adata_for_eval.obs[eval_key].isna()].copy()
         else:
             adata_for_eval = adata.copy()
@@ -56,6 +57,7 @@ def run_scibmetrics_benchmarker(
             batch_key=batch_key,
             label_key=eval_key,
             embedding_obsm_keys=methods.split(" "),
+            n_jobs=-1,
         )
         bm.benchmark()
 
@@ -79,7 +81,7 @@ def run_scibmetrics_benchmarker(
     df_tidy = df_tidy[["eval_key", "Method", "Metric", "Value", "Metric_Type"]]
     df_tidy.columns = df_tidy.columns.str.replace(r"\s+", "_", regex=True).str.lower()
     cols_to_modify = ["method", "metric", "metric_type"]
-    df_tidy[cols_to_modify] = df_tidy[cols_to_modify].applymap(
+    df_tidy[cols_to_modify] = df_tidy[cols_to_modify].map(
         lambda col: col.replace(" ", "_").lower() if isinstance(col, str) else col
     )
 

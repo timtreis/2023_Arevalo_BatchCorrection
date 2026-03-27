@@ -1,0 +1,2 @@
+number,batch,bio,params_lamb,params_nclust,params_sigma,params_tau,params_theta,state,total
+0,,,1.0,300,0.1,0.0,2.0,COMPLETE,

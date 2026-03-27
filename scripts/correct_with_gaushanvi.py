@@ -28,7 +28,7 @@ def correct_with_gaushanvi(
     vae.train(
         max_epochs=n_epochs,
         early_stopping=True,
-        early_stopping_monitor="elbo_validation",
+        early_stopping_monitor="validation_loss",
     )
 
     # gashanvi setup
@@ -36,7 +36,7 @@ def correct_with_gaushanvi(
     scanvi_model.train(
         max_epochs=n_epochs,
         early_stopping=True,
-        early_stopping_monitor="elbo_validation",
+        early_stopping_monitor="validation_loss",
     )
 
     # Get latent representation

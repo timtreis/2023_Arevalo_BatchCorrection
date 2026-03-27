@@ -2,9 +2,13 @@ Bootstrap: localimage
 From: containers/base.sif
 
 %environment
-    # JAX is needed only for scib-metrics benchmarking inside optimize_harmony.
-    # CPU is sufficient and avoids GPU contention.
-    export JAX_PLATFORMS=cpu
+    # Let JAX auto-detect GPU. PyTorch and JAX can coexist on GPU as long as
+    # XLA_PYTHON_CLIENT_PREALLOCATE=false (set in base.def) prevents JAX
+    # from grabbing all GPU memory.
+    export JAX_PLATFORMS=""
+    # Prepend pip-installed cuDNN 9 to LD_LIBRARY_PATH so JAX finds it
+    # instead of the system cuDNN 8 from the base image.
+    export LD_LIBRARY_PATH=/usr/local/lib/python3.11/dist-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
 
 %post
     export DEBIAN_FRONTEND=noninteractive
@@ -17,10 +21,24 @@ From: containers/base.sif
     ANNOY_COMPILER_ARGS="-march=x86-64-v3,-O3,-ffast-math,-fno-associative-math,-DANNOYLIB_MULTITHREADED_BUILD,-std=c++14" \
         python -m pip install --no-cache-dir --no-binary annoy annoy
 
+    # JAX with CUDA 12 support
+    python -m pip install --no-cache-dir \
+        "jax[cuda12]"
+
+    # PyTorch with CUDA 12.1 (matches container base image)
+    python -m pip install --no-cache-dir \
+        torch \
+        --index-url https://download.pytorch.org/whl/cu121
+
+    # Method-specific and HPO dependencies
     python -m pip install --no-cache-dir \
         harmonypy \
         scanorama \
         bbknn \
         leidenalg \
-        optuna \
-        "jax[cpu]"
+        optuna
+
+    # LAST: force cuDNN 9.8 — torch and jax pin 9.1 but jaxlib needs 9.8.
+    # Must be last so nothing can downgrade it.
+    python -m pip install --no-cache-dir --force-reinstall --no-deps \
+        "nvidia-cudnn-cu12==9.8.0.87"

@@ -6,9 +6,22 @@ import pandas as pd
 import anndata as ad
 
 from preprocessing.io import split_parquet
-from metrics.scib import _load_opentargets_moa_info, _merge_with_duplication
+from metrics.scib import (
+    _ensure_inchikey,
+    _load_opentargets_moa_info,
+    _load_repurposinghub_moa_info,
+    _load_repurposinghub_target_info,
+    _merge_with_duplication,
+)
 
 logger = logging.getLogger(__name__)
+
+# MOA eval_keys require loading external annotation tables and merging into adata
+_MOA_EVAL_KEY_LOADERS = {
+    "Metadata_OT_MOA": _load_opentargets_moa_info,
+    "Metadata_DRH_MOA": _load_repurposinghub_moa_info,
+    "Metadata_DRH_TARGET": _load_repurposinghub_target_info,
+}
 
 def _get_idx_of_samples_for_computation(meta, plate_type, ignore_dmso=False):
     index = meta["Metadata_PlateType"].isin(plate_type)
@@ -94,7 +107,12 @@ def calculate_map(
     )
     
     meta = metadata.loc[idx]
-    vals = embedding.loc[idx].values # copairs needs np.array
+    if isinstance(embedding, pd.DataFrame):
+        vals = embedding.loc[idx].values
+    else:
+        # numpy array — convert label index to positional for slicing
+        pos_idx = metadata.index.get_indexer(idx)
+        vals = embedding[pos_idx]
     
     if mode == "negcon":
         _group_negcons(meta)
@@ -139,28 +157,32 @@ def mean_average_precision(
     adata = ad.read_h5ad(adata_path)
     results = {}
 
-    # filter out eval_keys for which we cannot perform mAP calculations
-    for invalid_eval_key in ["Metadata_OT_MOA", "Metadata_DRH_MOA", "Metadata_DRH_TARGET"]:
-        if invalid_eval_key in eval_keys:
-            try:
-                eval_keys.remove(invalid_eval_key)
-                logger.warning(f"Cannot calculate mAP for eval_key '{invalid_eval_key}'. Removing from list.")
-            except ValueError:
-                pass
-
     # iterate over all keys x embeddings and calculate mAP scores
     for eval_key in eval_keys:
+        # MOA eval_keys need external annotations merged into adata
+        if eval_key in _MOA_EVAL_KEY_LOADERS:
+            meta = _MOA_EVAL_KEY_LOADERS[eval_key]()
+            adata_copy = _ensure_inchikey(adata.copy())
+            adata_for_eval = _merge_with_duplication(adata_copy, meta)
+            adata_for_eval = adata_for_eval[~adata_for_eval.obs[eval_key].isna()].copy()
+            if adata_for_eval.n_obs == 0:
+                logger.warning(f"No samples with valid '{eval_key}' annotations. Skipping.")
+                continue
+            logger.info(f"MOA eval_key '{eval_key}': {adata_for_eval.n_obs} samples after merge ({adata.n_obs} original).")
+        else:
+            adata_for_eval = adata
+
         results[eval_key] = {}
-        for embedding in adata.obsm.keys():
+        for embedding in adata_for_eval.obsm.keys():
             results[eval_key][embedding.lower()] = {}
             for mode in ["negcon", "nonrep"]:
-            
+
                 logger.info(f"Calculating {mode} mAP with eval_key '{eval_key}' for '{embedding}'.")
-            
+
                 results[eval_key][embedding.lower()][mode] = calculate_map(
                     mode=mode,
-                    metadata=adata.obs.copy(),
-                    embedding=adata.obsm[embedding].copy(),
+                    metadata=adata_for_eval.obs.copy(),
+                    embedding=adata_for_eval.obsm[embedding].copy(),
                     plate_type=plate_type,
                     eval_key=eval_key,
                     threshold=threshold,
@@ -184,4 +206,4 @@ def mean_average_precision(
        
     tidy_results.reset_index(drop=True).to_parquet(output_path, index=False)
 
-    logger.info(f"Finished calculating mAP scores for all {len(methods.keys())} embeddings.")
+    logger.info(f"Finished calculating mAP scores for all {len(results)} eval_keys.")

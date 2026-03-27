@@ -14,7 +14,6 @@ rule methods_combat:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
         script="scripts/correct_with_combat.py",
-        parameter_path="outputs/{scenario}/optimization/optuna_harmony_v2.csv"
     output:
         path="outputs/{scenario}/" + config["preproc"] + "_combat.parquet"
     log:
@@ -23,14 +22,11 @@ rule methods_combat:
         "containers/base.sif"  # combat only needs scanpy, which is in base
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
-            --parameter_path '{input.parameter_path}' \
             --batch_key '{params.batch_key}' \
             --output_path '{output.path}' \
             &> '{log}'
@@ -50,8 +46,6 @@ rule methods_sphering:
         method="ZCA-cor",
         column_norm="Metadata_JCP2022",
         values_norm="DMSO",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -78,8 +72,6 @@ rule methods_harmony_v1:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -107,8 +99,6 @@ rule methods_harmony_v2:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -135,8 +125,6 @@ rule methods_harmony_pca:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         smoketest="--smoketest" if config["smoketest"] else "",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -163,8 +151,6 @@ rule methods_scanorama:
     params:
         method="scanorama",
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -190,8 +176,6 @@ rule methods_scanorama_pca:
     params:
         method="scanorama_pca",
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -215,8 +199,6 @@ rule methods_mnn:
         "../envs/mnn.yaml"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -457,7 +439,6 @@ rule methods_sysvi:
         nvidia_gpu=1
     shell:
         """
-        export JAX_PLATFORMS=cpu && \
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
         python '{input.script}' \
             --input_data '{input.data}' \
@@ -542,8 +523,6 @@ rule methods_fastMNN:
         "containers/r.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -569,8 +548,6 @@ rule methods_seurat_cca:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="cca",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
@@ -597,8 +574,6 @@ rule methods_seurat_rpca:
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="rpca",
-    resources:
-        nvidia_gpu=1
     shell:
         """
         export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \

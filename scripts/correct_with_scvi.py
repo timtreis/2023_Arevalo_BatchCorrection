@@ -62,15 +62,17 @@ def correct_with_scvi(
             actual_batch_key = batch_key
             categorical_covariate_keys = [None]
 
+    # labels_key is intentionally omitted: scVI is unsupervised and does not
+    # use labels during training.  Registering a high-cardinality label column
+    # (e.g. 82 K compounds) wastes memory without any benefit.
     if multiple_covariates:
         scvi.model.SCVI.setup_anndata(
             adata,
             batch_key=actual_batch_key,
             categorical_covariate_keys=categorical_covariate_keys,
-            labels_key=label_key,
         )
     else:
-        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key, labels_key=label_key)
+        scvi.model.SCVI.setup_anndata(adata, batch_key=batch_key)
 
     vae = scvi.model.SCVI(
         adata,
@@ -83,7 +85,7 @@ def correct_with_scvi(
     vae.train(
         max_epochs=n_epochs,
         early_stopping=True,
-        early_stopping_monitor="elbo_validation",
+        early_stopping_monitor="validation_loss",
     )
 
     vals = vae.get_latent_representation()

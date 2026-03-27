@@ -22,6 +22,19 @@ with warnings.catch_warnings():
 logger = logging.getLogger(__name__)
 CLUSTER_KEY = "Metadata_Cluster"
 
+
+def _ensure_inchikey(adata: ad.AnnData) -> ad.AnnData:
+    """Add Metadata_InChIKey to adata.obs if missing, by joining with compound metadata."""
+    if "Metadata_InChIKey" in adata.obs.columns:
+        return adata
+    compound_meta = pd.read_csv("inputs/metadata/compound.csv.gz", usecols=["Metadata_JCP2022", "Metadata_InChIKey"])
+    # Deduplicate: some JCP2022 IDs map to multiple InChIKeys; keep first
+    compound_meta = compound_meta.drop_duplicates(subset="Metadata_JCP2022", keep="first")
+    # Use map instead of merge to preserve index
+    jcp_to_inchi = compound_meta.set_index("Metadata_JCP2022")["Metadata_InChIKey"]
+    adata.obs["Metadata_InChIKey"] = adata.obs["Metadata_JCP2022"].map(jcp_to_inchi).values
+    return adata
+
 def _filter_min_max_members(
     data: pd.DataFrame,
     col_to_count: str,
@@ -135,16 +148,13 @@ def _merge_with_duplication(
     )
     if copy_obsm:
         for key in adata.obsm.keys():
-            obsm = adata.obsm[key].iloc[replicate_indices, :]
-            obsm = obsm.reset_index(drop=True)
-            obsm.index = adata_new.obs.index
-            adata_new.obsm[key] = obsm
+            adata_new.obsm[key] = adata.obsm[key][replicate_indices, :]
 
     return adata_new
 
 def _subset_obs_based_on_eval_label_presence(meta, feats, eval_key) -> pd.DataFrame:
     # using mask because pd.DataFrames and np.arrays index differently
-    valid_mask = meta[eval_key].isna().values
+    valid_mask = ~meta[eval_key].isna().values
     feats_subset = feats[valid_mask]
     meta_subset = meta.loc[valid_mask].copy()
     
@@ -166,8 +176,8 @@ def aggregate_method_outputs_into_adata(
     adata = to_anndata(unintegrated_path)
 
     for name, path in name_path_mapping.items():
-        integrated_adata = to_anndata(path).to_df()
-        adata.obsm[name] = integrated_adata
+        integrated_adata = to_anndata(path)
+        adata.obsm[name] = integrated_adata.X
 
     adata.write_h5ad(output_path, compression="gzip")
 

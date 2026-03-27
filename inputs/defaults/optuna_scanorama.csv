@@ -1,0 +1,2 @@
+number,batch,bio,params_alpha,params_knn,params_sigma,state,total
+0,,,0.1,20,15.0,COMPLETE,
