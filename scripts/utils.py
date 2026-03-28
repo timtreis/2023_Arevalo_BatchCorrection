@@ -218,7 +218,9 @@ def scib_benchmark_embedding(
         bio = BioConservation(
             nmi_ari_cluster_labels_kmeans=False,
             nmi_ari_cluster_labels_leiden=False,
-            isolated_labels=False,
+            # cLISI is degenerate with high-cardinality labels (e.g. 302
+            # compounds): random embeddings score ~0.97, masking real signal.
+            clisi_knn=False,
         )
         batch = BatchCorrection(
             kbet_per_label=False,

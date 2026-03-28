@@ -39,10 +39,12 @@ def correct_with_scpoli(
     ]
     pretrain_to_train_ratio = params["params_pretrain_to_train_ratio"]
 
-    total_epochs = 4 if smoketest else 400
-    n_pretrain_epochs = 2 if smoketest else int(total_epochs * pretrain_to_train_ratio)
-    n_train_epochs = 2 if smoketest else (total_epochs - n_pretrain_epochs)
-    n_train_epochs += (0 if smoketest else 9999999) # we train until convergence
+    # scPoli disables early stopping during pretraining, so pretraining epochs
+    # must be finite. Use the HPO-tuned ratio to split a fixed budget for
+    # pretraining, then train until early stopping.
+    total_pretrain_budget = 4 if smoketest else 400
+    n_pretrain_epochs = 2 if smoketest else int(total_pretrain_budget * pretrain_to_train_ratio)
+    n_train_epochs = 2 if smoketest else 999999
 
     print("\nUsing the following hyperparameters:")
     print(f"- alpha_epoch_anneal: {alpha_epoch_anneal}")
@@ -50,8 +52,9 @@ def correct_with_scpoli(
     print(f"- eta: {eta}")
     print(f"- latent_dim: {latent_dim}")
     print(f"- hidden_layer_sizes: {hidden_layer_sizes}")
+    print(f"- pretrain_to_train_ratio: {pretrain_to_train_ratio}")
     print(f"- n_pretrain_epochs: {n_pretrain_epochs}")
-    print(f"- n_train_epochs: {n_train_epochs}\n")
+    print(f"- n_train_epochs: {n_train_epochs} (early stopping)\n")
 
     if isinstance(batch_key, list) and len(batch_key) == 1 and "," in batch_key[0]:
         batch_key = batch_key[0].split(",")
