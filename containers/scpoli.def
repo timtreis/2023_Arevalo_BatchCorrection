@@ -8,7 +8,10 @@ From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
     export MPLCONFIGDIR=/tmp/matplotlib
     export XLA_PYTHON_CLIENT_PREALLOCATE=false
     export TORCH_HOME=/tmp/torch_home
-    export JAX_PLATFORMS=cpu
+    export JAX_PLATFORMS=""
+    # Prepend pip-installed cuDNN to LD_LIBRARY_PATH so JAX finds it
+    # instead of the system cuDNN 8 from the base image.
+    export LD_LIBRARY_PATH=/usr/local/lib/python3.9/dist-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
     # scarches checks for this; without it, sklearn import fails
     export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
 
@@ -59,3 +62,8 @@ From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
         scib-metrics \
         optuna \
         "jax[cuda12]"
+
+    # LAST: force cuDNN 9.8 — torch and jax pin 9.1 but jaxlib needs 9.8.
+    # Must be last so nothing can downgrade it.
+    python -m pip install --no-cache-dir --force-reinstall --no-deps \
+        "nvidia-cudnn-cu12==9.8.0.87"
