@@ -87,6 +87,14 @@
 - Replaced `isolated_labels=False` with `clisi_knn=False` in lightweight HPO metrics.
 - cLISI remains enabled in the full scibmetrics benchmarker (for reporting), just not in HPO steering.
 
+### scANVI broadcast_labels is incompatible with COMPOUND-plate scenarios (2026-03-29)
+- scANVI's loss function calls `broadcast_labels(z1, n_broadcast=self.n_labels)` which creates tensors of O(batch × n_labels × latent_dim).
+- With COMPOUND plates, even after `coarsen_labels` (keeping labels in ≥3 sources), the label count remains in the thousands → allocation requests of 555+ GiB.
+- This is an architectural limit of scvi-tools' scANVI implementation, not a memory issue. It fails on any GPU.
+- Fix: auto-skip `scanvi_single` and `scanvi_multi` in the Snakefile when `plate_types` includes `COMPOUND`.
+- scANVI still works for TARGET2-only scenarios (302 labels).
+- The previous comment in the Snakefile ("No Snakefile-level skip is needed") was wrong.
+
 ### Snakemake lock cleanup (2026-03-28)
 - Removing lock files manually causes `FileNotFoundError` on next run — Snakemake expects the locks directory and files to exist.
 - Correct approach: `rm -f .snakemake/locks/0.input.lock .snakemake/locks/0.output.lock` then `mkdir -p .snakemake/locks` before relaunching.

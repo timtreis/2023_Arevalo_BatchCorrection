@@ -35,7 +35,7 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 |----------|---------|-------------|-----------|--------|
 | scenario_1 | source_6 | TARGET2 | Metadata_Batch | DONE (2026-03-28). All 15 methods, metrics, plots. PR #29 merged. |
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
-| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | RUNNING (2026-03-29, gpusrv43, PID 590014). ~245K cells. 39% done (16/41 steps). HPO: harmony done, scvi_single done, scvi_multi 3/30, scanorama 19/30. 5 corrections complete. Branch: feature/scenario-3-5-results |
+| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | OOM-killed on gpusrv43 (MIG 20GB). ~60% done. HPO complete: harmony v1/v2, scvi_single, seurat_rpca, fastMNN. Corrections done: combat, sphering, harmony v1/v2, scvi_single. Failed: scANVI (broadcast_labels 555GiB), seurat_cca/rpca/fastMNN corrections (MIG OOM). In-progress: scanorama 18/30, scvi_multi 1/30. Needs full A100 relaunch. scANVI auto-skipped via Snakefile fix. Branch: feature/scenario-3-5-results |
 | scenario_4 | 5 sources | TARGET2 | Metadata_Source | Not started |
 | scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | Not started |
 
@@ -47,7 +47,10 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] Commit scenario_1 results (PR #29, merged)
 - [x] Commit scenario_2 results (PR #30, merged)
 - [x] Launch scenario_3: `pixi run scenario-3` — launched 2026-03-28 23:40 on gpusrv43, PID 590014
-- [ ] Monitor scenario_3 completion (check `outputs/scenario_3/plots/results_table.pdf`)
+- [x] ~~Monitor scenario_3~~ — OOM-killed 2026-03-29 18:05 on MIG 20GB partition. ~60% done. Locks cleared, scANVI auto-skip added to Snakefile.
+- [ ] Relaunch scenario_3 on a **full A100 node** (not MIG). `pixi run scenario-3` with `--rerun-incomplete`. Completed steps won't re-run.
+- [x] Fix scANVI broadcast_labels OOM for COMPOUND-plate scenarios — added auto-skip in Snakefile when `plate_types` includes COMPOUND
+- [x] Create wave2 config (`inputs/conf/scenario_wave2.json`) — sources 5,9,11, T2+COMPOUND, batch=Metadata_Source
 - [ ] Launch scenario_4: `pixi run scenario-4`
 - [ ] Launch scenario_5: `pixi run scenario-5`
 - [ ] Verify all 15 methods complete per scenario (check `all_methods.h5ad`)
@@ -222,7 +225,9 @@ Research completed 2026-03-29. Full documentation in:
 - [x] Analyse compound replication structure (compound_source.csv, well.csv)
 - [x] Document Wave 1 vs Wave 2 design differences
 - [x] Create scenario registry with structured cards → `tasks/scenario_registry.md`
-- [ ] Create scenario config JSONs for wave1, wave2, and priority new scenarios
+- [x] Create scenario config JSON for wave2 → `inputs/conf/scenario_wave2.json`
+- [ ] Create scenario config JSONs for wave1 and other priority new scenarios
+- [ ] Add pixi task for wave2 to `pixi.toml` (or run manually with snakemake --configfile)
 - [ ] Run wave2 scenario (3 sources, quick — good first test of new scenarios)
 - [ ] Run wave1 scenario (7 sources, large — main reference atlas candidate)
 - [ ] Design and run F4 reference mapping experiment (requires wave1 + wave2 embeddings)

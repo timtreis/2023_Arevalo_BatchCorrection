@@ -42,9 +42,13 @@ try:
 except (FileNotFoundError, Exception):
     pass  # file doesn't exist yet (preprocessing not done); keep desc in the list
 
-# NOTE: scANVI and scPoli use label coarsening (utils.coarsen_labels) to handle
-# high-cardinality label columns.  Compounds appearing in <5 batches are marked
-# "Unknown" during training.  No Snakefile-level skip is needed.
+# scANVI's loss function uses broadcast_labels which is O(batch × n_labels × latent).
+# With COMPOUND plates, even after coarsening, the label count can be thousands,
+# causing OOM in broadcast_labels (e.g. 555 GiB allocation on scenario_3).
+# Skip scANVI for scenarios that include COMPOUND plates.
+if "COMPOUND" in config.get("plate_types", []):
+    METHODS = [m for m in METHODS if m not in ("scanvi_single", "scanvi_multi")]
+    print("NOTE: Skipping scANVI (COMPOUND plates → too many labels for broadcast_labels)")
 
 
 # Load rules
