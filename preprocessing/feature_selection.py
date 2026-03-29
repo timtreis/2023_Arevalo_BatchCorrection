@@ -46,7 +46,9 @@ def normalize_plate_effect_no_dask(
             continue
 
         sub_meta   = meta_cp.iloc[idx_plate]
-        rows_all   = sub_meta["Metadata_Row"].map(lambda x: ord(x.upper())-65+1).astype(float).values
+        rows_all   = sub_meta["Metadata_Row"].map(lambda x: sum(
+            (ord(c) - 64) * (26 ** i) for i, c in enumerate(reversed(x.upper()))
+        )).astype(float).values
         cols_all   = sub_meta["Metadata_Column"].astype(int).astype(float).values
         rows_rep0  = rows_all[rep_mask]
         cols_rep0  = cols_all[rep_mask]
@@ -64,12 +66,20 @@ def normalize_plate_effect_no_dask(
             else:
                 rows_rep, cols_rep, y_rep = rows_rep0, cols_rep0, y_rep0
 
-            med     = np.median(y_rep)
-            s_adapt = max(spline_s, len(y_rep) * np.var(y_rep))
-            spline  = SmoothBivariateSpline(rows_rep, cols_rep, y_rep, s=s_adapt)
-            bias    = spline(rows_all, cols_all, grid=False)
+            med = np.median(y_rep)
 
-            corrected_plate[:, j] = Vp[:, j] - bias + med
+            # SmoothBivariateSpline needs at least (kx+1)*(ky+1)=16 points
+            # and >1 unique value in each coordinate
+            if (len(y_rep) >= 16
+                    and len(np.unique(rows_rep)) > 1
+                    and len(np.unique(cols_rep)) > 1):
+                s_adapt = max(spline_s, len(y_rep) * np.var(y_rep))
+                spline  = SmoothBivariateSpline(rows_rep, cols_rep, y_rep, s=s_adapt)
+                bias    = spline(rows_all, cols_all, grid=False)
+                corrected_plate[:, j] = Vp[:, j] - bias + med
+            else:
+                # Too few points for spline; skip correction for this feature
+                corrected_plate[:, j] = Vp[:, j]
 
         corrected[idx_plate, :] = corrected_plate
 
