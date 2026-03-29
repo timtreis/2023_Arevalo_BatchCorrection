@@ -82,20 +82,58 @@ if (!is.null(opt$cached_rds) && file.exists(opt$cached_rds)) {
 }
 
 integration_method <- if (opt$method == "cca") CCAIntegration else RPCAIntegration
-obj <- IntegrateLayers(
-  object = obj,
-  method = integration_method,
-  orig.reduction = "pca",
-  new.reduction = "integrated",
-  dims = 1:opt$dims,
-  k.anchor = opt$k_anchor,
-  k.weight = opt$k_weight,
-  verbose = FALSE
-)
 
-corrected_mat <- Embeddings(obj, "integrated")
-batch_labels <- obj@meta.data[[opt$batch_key]]
-bio_labels <- obj@meta.data[[opt$label_key]]
+# Retry integration with progressively lower k.weight if it fails or produces NaN.
+# This handles cross-microscope scenarios where anchor counts vary across source pairs.
+k_weight_try <- opt$k_weight
+integrated_obj <- NULL
+
+while (k_weight_try >= 3) {
+  result <- tryCatch(
+    IntegrateLayers(
+      object = obj,
+      method = integration_method,
+      orig.reduction = "pca",
+      new.reduction = "integrated",
+      dims = 1:opt$dims,
+      k.anchor = opt$k_anchor,
+      k.weight = k_weight_try,
+      verbose = FALSE
+    ),
+    error = function(e) {
+      cat(sprintf("IntegrateLayers failed with k.weight=%d: %s\n",
+                  k_weight_try, conditionMessage(e)), file = stderr())
+      NULL
+    }
+  )
+
+  if (!is.null(result)) {
+    mat <- Embeddings(result, "integrated")
+    if (all(is.finite(mat))) {
+      integrated_obj <- result
+      break
+    } else {
+      n_bad <- sum(!is.finite(mat))
+      cat(sprintf("k.weight=%d produced %d non-finite values, retrying lower\n",
+                  k_weight_try, n_bad), file = stderr())
+    }
+  }
+
+  k_weight_try <- k_weight_try %/% 2
+}
+
+if (is.null(integrated_obj)) {
+  cat("All k.weight attempts failed\n", file = stderr())
+  quit(status = 1)
+}
+
+if (k_weight_try != opt$k_weight) {
+  cat(sprintf("EFFECTIVE_K_WEIGHT:%d\n", k_weight_try))
+}
+
+corrected_mat <- Embeddings(integrated_obj, "integrated")
+batch_labels <- integrated_obj@meta.data[[opt$batch_key]]
+bio_labels <- integrated_obj@meta.data[[opt$label_key]]
 
 batch_score <- compute_pcr_batch(corrected_mat, batch_labels)
 bio_score <- compute_pcr_bio(corrected_mat, bio_labels)

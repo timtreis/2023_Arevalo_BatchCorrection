@@ -31,10 +31,26 @@ def _build_cache(input_data, batch_key, cache_path):
     return True
 
 
-def objective(trial, input_data, batch_key, label_key, method, cache_path):
+def _get_min_batch_size(input_data, batch_key):
+    """Read the input parquet via R (arrow) and return the smallest batch size."""
+    r_code = (
+        f'suppressPackageStartupMessages(library(arrow)); '
+        f'df <- read_parquet("{input_data}", col_select = "{batch_key}"); '
+        f'cat(min(table(df[["{batch_key}"]])))'
+    )
+    result = subprocess.run(
+        ["Rscript", "-e", r_code], capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        logger.warning("Could not read batch sizes: %s", result.stderr[-300:])
+        return None
+    return int(result.stdout.strip())
+
+
+def objective(trial, input_data, batch_key, label_key, method, cache_path, k_weight_max):
     dims = trial.suggest_int("dims", 5, 50)
     k_anchor = trial.suggest_int("k_anchor", 3, 30)
-    k_weight = trial.suggest_int("k_weight", 50, 200)
+    k_weight = trial.suggest_int("k_weight", 5, k_weight_max)
 
     cmd = [
         "Rscript", "scripts/run_seurat_trial.R",
@@ -57,12 +73,20 @@ def objective(trial, input_data, batch_key, label_key, method, cache_path):
         logger.warning("Trial failed: %s", result.stderr[-500:] if result.stderr else "no stderr")
         raise optuna.TrialPruned(f"R trial failed (exit {result.returncode})")
 
-    for line in reversed(result.stdout.strip().split("\n")):
+    stdout = result.stdout.strip()
+
+    # Record effective k_weight if R had to retry with a lower value
+    for line in stdout.split("\n"):
+        if line.startswith("EFFECTIVE_K_WEIGHT:"):
+            trial.set_user_attr("effective_k_weight", int(line.split(":")[1]))
+            break
+
+    for line in reversed(stdout.split("\n")):
         if line.startswith("RESULT:"):
             batch_score, bio_score = map(float, line[7:].split(","))
             return batch_score, bio_score
 
-    logger.warning("No RESULT line in R output: %s", result.stdout[-500:])
+    logger.warning("No RESULT line in R output: %s", stdout[-500:])
     raise optuna.TrialPruned("No RESULT line in R output")
 
 
@@ -77,12 +101,30 @@ def optimize_seurat(input_path, batch_key, label_key, method, n_trials, output_p
         logger.warning("Cache build failed, falling back to per-trial parquet loading")
         cache_path = None
 
+    # Adapt k_weight upper bound to the smallest batch.
+    # Seurat's FindWeights requires k_weight <= anchor count per pair.
+    # Anchor count scales with batch size and cross-batch similarity.
+    # With heterogeneous sources (different microscopes), anchor counts can be
+    # much lower than batch size, so we use a conservative fraction.
+    min_batch = _get_min_batch_size(input_path, batch_key)
+    if min_batch is not None:
+        k_weight_max = min(200, max(20, min_batch // 10))
+        logger.info("min_batch_size=%d → k_weight range [5, %d]", min_batch, k_weight_max)
+    else:
+        k_weight_max = 200
+        logger.info("Could not determine batch sizes, using k_weight range [5, %d]", k_weight_max)
+
     study = optuna.create_study(
         directions=["maximize", "maximize"],
         sampler=optuna.samplers.TPESampler(seed=42),
     )
+
+    # Seed with a conservative first trial: high k_anchor (more anchors),
+    # low k_weight (safe), and Arevalo default dims.
+    study.enqueue_trial({"dims": 30, "k_anchor": 30, "k_weight": min(k_weight_max, 10)})
+
     study.optimize(
-        lambda trial: objective(trial, input_path, batch_key, label_key, method, cache_path),
+        lambda trial: objective(trial, input_path, batch_key, label_key, method, cache_path, k_weight_max),
         n_trials=n_trials,
         catch=(Exception,),
     )

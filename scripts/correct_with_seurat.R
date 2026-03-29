@@ -32,9 +32,10 @@ k_weight_val <- opt$k_weight
 
 if (!is.null(opt$parameter_path)) {
   params_df <- read.csv(opt$parameter_path)
-  params_df <- params_df[order(-params_df$total), ]
-  best <- params_df[1, ]
-  if (best$state != "COMPLETE") stop("Optimization did not complete successfully")
+  complete_df <- params_df[params_df$state == "COMPLETE", ]
+  if (nrow(complete_df) == 0) stop("No COMPLETE trials in HPO — fix upstream before correction")
+  complete_df <- complete_df[order(-complete_df$total), ]
+  best <- complete_df[1, ]
   dims_val <- as.integer(best$params_dims)
   k_anchor_val <- as.integer(best$params_k_anchor)
   k_weight_val <- as.integer(best$params_k_weight)
@@ -72,19 +73,53 @@ obj <- ScaleData(obj, verbose = FALSE)
 obj <- RunPCA(obj, npcs = dims_val, verbose = FALSE)
 
 # Seurat v5 integration via IntegrateLayers
-obj <- IntegrateLayers(
-  object = obj,
-  method = if (opt$method == "cca") CCAIntegration else RPCAIntegration,
-  orig.reduction = "pca",
-  new.reduction = "integrated",
-  dims = 1:dims_val,
-  k.anchor = k_anchor_val,
-  k.weight = k_weight_val,
-  verbose = FALSE
-)
+# Retry with progressively lower k.weight on failure or NaN output
+integration_method <- if (opt$method == "cca") CCAIntegration else RPCAIntegration
+k_weight_try <- k_weight_val
+integrated_obj <- NULL
+
+while (k_weight_try >= 3) {
+  result <- tryCatch(
+    IntegrateLayers(
+      object = obj,
+      method = integration_method,
+      orig.reduction = "pca",
+      new.reduction = "integrated",
+      dims = 1:dims_val,
+      k.anchor = k_anchor_val,
+      k.weight = k_weight_try,
+      verbose = FALSE
+    ),
+    error = function(e) {
+      cat(sprintf("IntegrateLayers failed with k.weight=%d: %s\n", k_weight_try, conditionMessage(e)))
+      NULL
+    }
+  )
+
+  if (!is.null(result)) {
+    mat <- Embeddings(result, "integrated")
+    if (all(is.finite(mat))) {
+      integrated_obj <- result
+      break
+    } else {
+      n_bad <- sum(!is.finite(mat))
+      cat(sprintf("k.weight=%d produced %d non-finite values, retrying lower\n", k_weight_try, n_bad))
+    }
+  }
+
+  k_weight_try <- k_weight_try %/% 2
+}
+
+if (is.null(integrated_obj)) {
+  stop("IntegrateLayers failed at all k.weight values down to 3")
+}
+
+if (k_weight_try != k_weight_val) {
+  cat(sprintf("NOTE: Used effective k.weight=%d (requested %d)\n", k_weight_try, k_weight_val))
+}
 
 # Extract integrated embedding
-integrated_embed <- Embeddings(obj, "integrated")
+integrated_embed <- Embeddings(integrated_obj, "integrated")
 corrected_df <- as.data.frame(integrated_embed)
 colnames(corrected_df) <- paste0("seurat_", seq_len(ncol(corrected_df)))
 
