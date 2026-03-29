@@ -100,6 +100,12 @@
 - Correct approach: `rm -f .snakemake/locks/0.input.lock .snakemake/locks/0.output.lock` then `mkdir -p .snakemake/locks` before relaunching.
 - Alternative: use `snakemake --unlock` but this sometimes stalls if the DAG is complex.
 
+### Stale HPO CSVs with all-PRUNED/FAIL trials block corrections (2026-03-29)
+- When R HPO trials are killed (exit -9, OOM), Optuna marks them PRUNED. The CSV file exists and Snakemake considers HPO "done", but the correction script rejects it ("Optimization did not complete successfully") because no trial has state=COMPLETE.
+- Snakemake won't re-run HPO because the output file exists. Must manually delete the stale CSV to trigger re-run.
+- Affected scenario_3: fastMNN and seurat_rpca HPO had all 30 trials PRUNED/FAIL from MIG OOM. Deleted CSVs, need 2nd `pixi run scenario-3` after current run.
+- Future-proofing idea: the correction scripts could check for at least one COMPLETE trial before reading HPO CSVs, and exit with a clear message (they already do this).
+
 ### Wave 1 vs Wave 2 compound replication is fundamentally different (2026-03-29)
 - **Wave 1** (7 partners): Each partner exchanges with 4 of 6 others. Per-source replication is median 1 well/compound. Cross-source replication comes from exchange — 74.5% of compounds in 5+ sources. Breadth-first design (82K compounds).
 - **Wave 2** (3 partners): Each partner exchanges with both others. 84.8% of compounds in ALL 3 sources. Per-source replication is 2-4 wells. Combined median 7 reps. Depth-first design (36K compounds).

@@ -35,7 +35,7 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 |----------|---------|-------------|-----------|--------|
 | scenario_1 | source_6 | TARGET2 | Metadata_Batch | DONE (2026-03-28). All 15 methods, metrics, plots. PR #29 merged. |
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
-| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | OOM-killed on gpusrv43 (MIG 20GB). ~60% done. HPO complete: harmony v1/v2, scvi_single, seurat_rpca, fastMNN. Corrections done: combat, sphering, harmony v1/v2, scvi_single. Failed: scANVI (broadcast_labels 555GiB), seurat_cca/rpca/fastMNN corrections (MIG OOM). In-progress: scanorama 18/30, scvi_multi 1/30. Needs full A100 relaunch. scANVI auto-skipped via Snakefile fix. Branch: feature/scenario-3-5-results |
+| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | RELAUNCHED (2026-03-29 18:42) on full A100 80GB. HPO running: scvi_multi 3/30, scanorama 1/30, seurat_cca 0/30. fastMNN+seurat_rpca HPO stale CSVs deleted — need 2nd relaunch after current run. scANVI auto-skipped. Completed from prior run: preprocessing, combat, sphering, harmony v1/v2, scvi_single. Branch: feature/docs-and-scenario-research (pushed to myfork). |
 | scenario_4 | 5 sources | TARGET2 | Metadata_Source | Not started |
 | scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | Not started |
 
@@ -48,7 +48,8 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] Commit scenario_2 results (PR #30, merged)
 - [x] Launch scenario_3: `pixi run scenario-3` — launched 2026-03-28 23:40 on gpusrv43, PID 590014
 - [x] ~~Monitor scenario_3~~ — OOM-killed 2026-03-29 18:05 on MIG 20GB partition. ~60% done. Locks cleared, scANVI auto-skip added to Snakefile.
-- [ ] Relaunch scenario_3 on a **full A100 node** (not MIG). `pixi run scenario-3` with `--rerun-incomplete`. Completed steps won't re-run.
+- [x] Relaunch scenario_3 on full A100 80GB (2026-03-29 18:42). scvi_multi/scanorama/seurat_cca HPO running. Stale fastMNN+seurat_rpca HPO CSVs deleted.
+- [ ] After current S3 run completes: relaunch `pixi run scenario-3` again to pick up fastMNN HPO + seurat_rpca HPO (CSVs were deleted, Snakemake needs a 2nd pass)
 - [x] Fix scANVI broadcast_labels OOM for COMPOUND-plate scenarios — added auto-skip in Snakefile when `plate_types` includes COMPOUND
 - [x] Create wave2 config (`inputs/conf/scenario_wave2.json`) — sources 5,9,11, T2+COMPOUND, batch=Metadata_Source
 - [ ] Launch scenario_4: `pixi run scenario-4`
