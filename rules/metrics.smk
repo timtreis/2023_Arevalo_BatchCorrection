@@ -53,7 +53,9 @@ rule metrics_run_scibmetrics_benchmarker:
     log:
         f"outputs/{scenario}/logs/{config['preproc']}_scibmetrics_benchmarker.log"
     container:
-        "containers/scibmetrics.sif"
+        "containers/scibmetrics-gpu.sif"
+    resources:
+        nvidia_gpu=1
     threads: 6
     shell:
         """

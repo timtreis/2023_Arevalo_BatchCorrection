@@ -42,6 +42,24 @@ try:
 except (FileNotFoundError, Exception):
     pass  # file doesn't exist yet (preprocessing not done); keep desc in the list
 
+# R-based methods (fastMNN, Seurat CCA/RPCA) fail on large datasets due to R's
+# 2^31-1 element vector limit in intermediate computations (e.g. batchelor's
+# .average_correction smoothing kernel) and memory allocation patterns in Seurat's
+# IntegrateLayers. See tasks/r_methods_scalability.md for full analysis.
+R_METHODS_MAX_CELLS = 100_000
+_r_methods = ("fastMNN", "seurat_cca", "seurat_rpca")
+try:
+    _n_cells_r = _n_cells  # reuse from DESC check above
+except NameError:
+    try:
+        import pyarrow.parquet as pq
+        _n_cells_r = pq.read_metadata(_preproc_path).num_rows
+    except (FileNotFoundError, Exception):
+        _n_cells_r = 0
+if _n_cells_r > R_METHODS_MAX_CELLS:
+    METHODS = [m for m in METHODS if m not in _r_methods]
+    print(f"NOTE: Skipping R methods {list(_r_methods)} (input has {_n_cells_r:,} cells, limit is {R_METHODS_MAX_CELLS:,})")
+
 # scANVI's loss function uses broadcast_labels which is O(batch × n_labels × latent).
 # With COMPOUND plates, even after coarsening, the label count can be thousands,
 # causing OOM in broadcast_labels (e.g. 555 GiB allocation on scenario_3).

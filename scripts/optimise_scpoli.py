@@ -8,7 +8,7 @@ import anndata as ad
 import optuna
 from scarches.models.scpoli import scPoli
 
-from utils import scib_benchmark_embedding, save_optuna_results, coarsen_labels
+from utils import scib_benchmark_embedding, save_optuna_results, coarsen_labels, _stratified_subsample
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,13 @@ def optimize_scpoli(
 
     # Mark rare compounds as unlabeled for semi-supervised training
     coarsen_labels(adata, label_key, batch_key)
+
+    # Subsample for HPO — we only need relative rankings, not perfect models.
+    # The correction step still trains on all cells.
+    HPO_MAX_CELLS = 100_000
+    if adata.n_obs > HPO_MAX_CELLS:
+        adata = _stratified_subsample(adata, [batch_key[0] if isinstance(batch_key, list) else batch_key], HPO_MAX_CELLS)
+        print(f"HPO subsample: {adata.n_obs} cells (from original)")
 
     from utils import warmup_benchmark
     warmup_benchmark(batch_key, label_key)

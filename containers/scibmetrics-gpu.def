@@ -1,0 +1,28 @@
+Bootstrap: localimage
+From: containers/base.sif
+
+%environment
+    # JAX auto-detects GPU for silhouette, iLISI, cLISI, kBET (fast on GPU).
+    # KMeans NMI/ARI is monkeypatched to sklearn in the benchmarker script
+    # to avoid the JAX O(n*k*d) 3D tensor OOM.
+    export JAX_PLATFORMS=""
+    # Prepend pip-installed cuDNN 9.8 so it takes priority over host cuDNN 8.x
+    # injected by Apptainer --nv.
+    export LD_LIBRARY_PATH=/usr/local/lib/python3.11/dist-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
+
+%post
+    # JAX with CUDA support
+    python -m pip install --no-cache-dir "jax[cuda12]"
+
+    # FAISS GPU for brute-force exact KNN (uses CUDA/cuBLAS, not cuDNN)
+    python -m pip install --no-cache-dir faiss-gpu-cu12
+
+    # Additional packages not provided by base
+    python -m pip install --no-cache-dir \
+        plottable \
+        copairs \
+        chex
+
+    # Pin cuDNN 9.8 as final step — jax[cuda12] pins 9.1 via deps, but JAX 0.7+
+    # needs >=9.8. Must be last to prevent pip resolver from downgrading it.
+    pip install --force-reinstall --no-deps "nvidia-cudnn-cu12==9.8.0.87"

@@ -106,6 +106,22 @@
 - This means Wave 2 has dramatically better per-compound evaluation power (30K evaluable vs ~850 for S5/S8) despite having fewer sources and fewer total compounds.
 - The `compound_source.csv.gz` from the JUMP datasets repo only shows source-level presence, not well-level replication. Must use `well.csv.gz` joined with `plate.csv.gz` to get actual replicate counts.
 
+### R methods (fastMNN, Seurat CCA/RPCA) cannot scale beyond ~100K cells (2026-04-01)
+- fastMNN's `.average_correction` in the `batchelor` package creates a smoothing kernel matrix of `n_target_cells × n_mnn_pairs`. At 244K cells (scenario_3), this exceeds R's 2^31-1 element vector limit. This is a hard R language constraint, not a RAM issue.
+- Seurat CCA/RPCA's `IntegrateLayers` creates dense intermediates during anchor finding that grow superlinearly with cell count. All HPO trials get killed (signal -9) after 1-2 hours on 244K cells, even on nodes with 2 TB RAM.
+- When all R trials fail (return None), Optuna's TPE sampler crashes on all-None weights (`TypeError`), causing a cascade where trials 11-29 fail instantly without launching R.
+- All COMPOUND-plate scenarios (S3, S5, S8, wave2, wave1) exceed 200K cells and will trigger this. TARGET2-only scenarios (S1, S2, S4, S6, S7) stay under 50K and are safe.
+- Fix: auto-skip R methods in Snakefile when `n_cells > 100_000`. Threshold is conservative — the actual failure point varies by HPO parameters but 100K gives safe margin.
+- Full analysis: `tasks/r_methods_scalability.md`.
+
+### RefChemDB is not viable as DRH replacement for JUMP-CP (2026-04-01)
+- RefChemDB (EPA, Judson 2019) provides expert-curated chemical-target annotations with evidence support scores (`count` = number of independent sources). High-quality core is count ≥ 2.
+- Chemical space mismatch: RefChemDB covers ~41K chemicals focused on environmental/industrial/tox targets (AR, ESR1, ACHE, DRD2). JUMP-CP TARGET2 compounds are mostly kinase inhibitors and oncology drugs — minimal overlap at high evidence levels.
+- Bridge is lossy: InChIKey → PubChem CID → DTXSID loses 40% of compounds (many JUMP tool compounds aren't in EPA's registry).
+- At count ≥ 2: only 40/302 TARGET2 cpds map, yielding 2 evaluable targets. At count ≥ 1 (unfiltered): 113 cpds, 77 evaluable — but single-source annotations have 39.5% precision per the RefChemDB paper.
+- For compound annotation alternatives, check `target_annotations.parquet` (ChEMBL, 62% coverage of full 116K cpds) before exploring other sources.
+- POC code and cached data: `exploration/refchemdb_mapping.py`, `exploration/cache/`.
+
 ### TARGET2 dominates evaluation for most scenarios (2026-03-29)
 - For most scenarios, COMPOUND plate cross-source overlap is <1%. The 306 TARGET2 compounds (present in ALL sources) dominate mAP evaluation.
 - Exception: Wave 2 (84.8% overlap), C8 with bridge source S7 (6.3%), and cross-wave scenarios.

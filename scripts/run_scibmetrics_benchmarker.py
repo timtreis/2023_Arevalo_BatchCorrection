@@ -1,9 +1,12 @@
 import sys
 import logging
+import numpy as np
 import scanpy as sc
 import pandas as pd
 
-from scib_metrics.benchmark import Benchmarker
+import scib_metrics.metrics._nmi_ari as _nmi_ari
+
+from scib_metrics.benchmark import Benchmarker, BioConservation
 from metrics.scib import (
     _ensure_inchikey,
     _merge_with_duplication,
@@ -17,6 +20,59 @@ import warnings
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 logger = logging.getLogger(__name__)
+
+
+# --- GPU-accelerated KNN via FAISS ---
+
+def _make_faiss_gpu_knn():
+    """Create a FAISS GPU brute-force KNN function for scib-metrics.
+
+    Uses IndexFlatL2 (exact, no approximation) to avoid the duplicate-index
+    problem that HNSW can produce, which corrupts downstream metrics.
+    """
+    import faiss
+    from scib_metrics.nearest_neighbors import NeighborsResults
+
+    n_gpus = faiss.get_num_gpus()
+    if n_gpus == 0:
+        logger.warning("No GPU available for FAISS, falling back to pynndescent")
+        return None
+
+    def faiss_gpu_knn(X: np.ndarray, k: int) -> NeighborsResults:
+        X = np.ascontiguousarray(X, dtype=np.float32)
+        res = faiss.StandardGpuResources()
+        index = faiss.index_cpu_to_gpu(res, 0, faiss.IndexFlatL2(X.shape[1]))
+        index.add(X)
+        distances_sq, indices = index.search(X, k)
+        return NeighborsResults(
+            indices=indices,
+            distances=np.sqrt(np.maximum(distances_sq, 0.0)),
+        )
+
+    return faiss_gpu_knn
+
+
+try:
+    _faiss_knn = _make_faiss_gpu_knn()
+except ImportError:
+    logger.warning("faiss not installed, falling back to pynndescent")
+    _faiss_knn = None
+
+
+# --- KMeans monkeypatch: FAISS GPU KMeans replaces JAX KMeans ---
+# JAX KMeans creates an O(n_cells * n_clusters * n_features) 3D tensor in the
+# centroid update step, causing 8+ TB allocations at 244K cells.
+# FAISS GPU KMeans runs entirely on GPU and completes in seconds.
+
+def _compute_clustering_kmeans_patched(X, n_clusters):
+    import faiss
+    X = np.ascontiguousarray(X, dtype=np.float32)
+    kmeans = faiss.Kmeans(X.shape[1], n_clusters, niter=20, gpu=True, seed=0)
+    kmeans.train(X)
+    _, labels = kmeans.index.search(X, 1)
+    return labels.ravel()
+
+_nmi_ari._compute_clustering_kmeans = _compute_clustering_kmeans_patched
 
 
 def run_scibmetrics_benchmarker(
@@ -52,13 +108,35 @@ def run_scibmetrics_benchmarker(
         if eval_key not in adata_for_eval.obs.columns:
             raise ValueError(f"Eval key '{eval_key}' not in metadata")
 
+        # With high-cardinality labels (e.g. 82K compounds), some metrics are
+        # degenerate and must be skipped:
+        # - cLISI: random embeddings score ~0.97, masking real signal. Also OOMs
+        #   on GPU (jax.vmap over 244K cells × 82K label bincount).
+        # - kmeans NMI/ARI: scib-metrics sets n_clusters = n_labels, so 82K
+        #   clusters on 244K cells (~3 cells/cluster) makes KMeans unstable.
+        #   Results are dominated by initialization noise, not bio conservation.
+        n_labels = adata_for_eval.obs[eval_key].nunique()
+        high_cardinality = n_labels > 500
+
+        if high_cardinality:
+            logger.info(
+                f"High-cardinality labels ({n_labels}): disabling cLISI and "
+                f"kmeans NMI/ARI (degenerate with n_clusters={n_labels})"
+            )
+
         bm = Benchmarker(
             adata_for_eval,
             batch_key=batch_key,
             label_key=eval_key,
             embedding_obsm_keys=methods.split(" "),
+            bio_conservation_metrics=BioConservation(
+                clisi_knn=not high_cardinality,
+                nmi_ari_cluster_labels_kmeans=not high_cardinality,
+            ),
             n_jobs=-1,
         )
+        if _faiss_knn is not None:
+            bm.prepare(neighbor_computer=_faiss_knn)
         bm.benchmark()
 
         df = bm.get_results(min_max_scale=False)

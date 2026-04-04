@@ -9,7 +9,7 @@ import numpy as np
 import scanorama
 
 from preprocessing import io
-from utils import scib_benchmark_embedding, save_optuna_results
+from utils import scib_benchmark_embedding, save_optuna_results, _stratified_subsample
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,13 @@ def optimize_scanorama(
     if smoketest:
         n_trials = 2
     adata = io.to_anndata(input_path)
+
+    # Subsample for HPO — relative rankings are preserved; correction uses full data.
+    HPO_MAX_CELLS = 100_000
+    if adata.n_obs > HPO_MAX_CELLS:
+        _key = batch_key if isinstance(batch_key, str) else batch_key[0]
+        adata = _stratified_subsample(adata, [_key], HPO_MAX_CELLS)
+        print(f"HPO subsample: {adata.n_obs} cells")
 
     # PCA reduction for HPO speed — scanorama on 50 PCs instead of 1040 features.
     from sklearn.decomposition import PCA

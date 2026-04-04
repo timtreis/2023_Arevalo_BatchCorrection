@@ -35,7 +35,7 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 |----------|---------|-------------|-----------|--------|
 | scenario_1 | source_6 | TARGET2 | Metadata_Batch | DONE (2026-03-28). All 15 methods, metrics, plots. PR #29 merged. |
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
-| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | OOM-killed on gpusrv43 (MIG 20GB). ~60% done. HPO complete: harmony v1/v2, scvi_single, seurat_rpca, fastMNN. Corrections done: combat, sphering, harmony v1/v2, scvi_single. Failed: scANVI (broadcast_labels 555GiB), seurat_cca/rpca/fastMNN corrections (MIG OOM). In-progress: scanorama 18/30, scvi_multi 1/30. Needs full A100 relaunch. scANVI auto-skipped via Snakefile fix. Branch: feature/scenario-3-5-results |
+| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | RELAUNCHED 2026-04-01 on supergpu25 (H100 80GB), PID 4108981. Snakemake picked up sysvi HPO (2 remaining trials) + scpoli HPO+correction + aggregation + metrics + plots. 7/9 methods already done. R methods/DESC/scANVI auto-skipped. |
 | scenario_4 | 5 sources | TARGET2 | Metadata_Source | Not started |
 | scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | Not started |
 
@@ -48,7 +48,12 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] Commit scenario_2 results (PR #30, merged)
 - [x] Launch scenario_3: `pixi run scenario-3` — launched 2026-03-28 23:40 on gpusrv43, PID 590014
 - [x] ~~Monitor scenario_3~~ — OOM-killed 2026-03-29 18:05 on MIG 20GB partition. ~60% done. Locks cleared, scANVI auto-skip added to Snakefile.
-- [ ] Relaunch scenario_3 on a **full A100 node** (not MIG). `pixi run scenario-3` with `--rerun-incomplete`. Completed steps won't re-run.
+- [x] Relaunch scenario_3 on full A100 80GB (2026-03-29 18:42). Pass 1 running (scvi_multi/scanorama/seurat_cca HPO).
+- [x] ~~Pass 2 auto-relaunch via monitor script (PID 3944567)~~ — monitor died. R methods (fastMNN, seurat_cca, seurat_rpca) now auto-skipped for S3 (see below). sysvi reached 28/30 trials before pipeline stopped.
+- [x] Investigate R method failures on S3 — root cause: R's 2^31 vector limit in intermediate computations (fastMNN `.average_correction`, Seurat `IntegrateLayers`). Full analysis: `tasks/r_methods_scalability.md`
+- [x] Implement auto-skip for R methods (fastMNN, seurat_cca, seurat_rpca) when input >100K cells — added to `Snakefile:45-61`, same pattern as DESC/scANVI skips. Dry-run verified on S1 (keep) and S3 (skip).
+- [x] Relaunch S3 — locks cleared, relaunched 2026-04-01 on supergpu25 (H100 80GB), PID 4108981. Snakemake DAG: sysvi HPO (2 trials) → sysvi correction → scpoli HPO → scpoli correction → aggregate → metrics → plots.
+- [ ] Verify S3 completion: check `all_methods.h5ad`, metrics parquets, and results_table.pdf
 - [x] Fix scANVI broadcast_labels OOM for COMPOUND-plate scenarios — added auto-skip in Snakefile when `plate_types` includes COMPOUND
 - [x] Create wave2 config (`inputs/conf/scenario_wave2.json`) — sources 5,9,11, T2+COMPOUND, batch=Metadata_Source
 - [ ] Launch scenario_4: `pixi run scenario-4`
@@ -88,6 +93,9 @@ Detailed plan in `plans/moa_annotation_mapping.md`.
 - [ ] Add `"Metadata_DRH_MOA"` to eval_keys in scenario configs 1-5
 - [ ] Run end-to-end verification on one scenario
 - [ ] Generate coverage statistics for paper Methods section
+- [x] Investigate RefChemDB as DRH replacement — POC on TARGET2 (302 cpds). Script: `exploration/refchemdb_mapping.py`, cache: `exploration/cache/`. Bridge: InChIKey → PubChem CID → DTXSID → RefChemDB.
+- **Finding**: RefChemDB is not viable as DRH replacement for TARGET2. At evidence count≥2 (expert-curated quality), only 40/302 cpds map, yielding 2 evaluable targets (4 cpds). At count≥1 (unfiltered, includes single-source), 113 cpds map with 77 evaluable. DRH at ≥3 cpds/MOA: 31 MOAs, 110 cpds. Root cause: chemical space mismatch — RefChemDB focuses on EPA tox targets (AR, ESR1, ACHE), JUMP TARGET2 is mostly kinase inhibitors/oncology.
+- [ ] Explore alternative annotation sources: ChEMBL target annotations (`inputs/metadata/target_annotations.parquet`, 62% coverage of 116K cpds) or JUMP consortium's own compound metadata. These are more promising for COMPOUND-plate evaluation.
 
 ---
 
