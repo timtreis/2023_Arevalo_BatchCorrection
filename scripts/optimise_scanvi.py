@@ -10,7 +10,7 @@ import scvi
 import torch.distributions as dist
 dist.Distribution.set_default_validate_args(False)    # disable global validation
 
-from utils import scib_benchmark_embedding, save_optuna_results, coarsen_labels
+from utils import scib_benchmark_embedding, save_optuna_results, coarsen_labels, _stratified_subsample
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,13 @@ def optimize_scvi(
 
     # Mark rare compounds as unlabeled for semi-supervised training
     coarsen_labels(adata, label_key, batch_key)
+
+    # Subsample for HPO — relative rankings are preserved; correction uses full data.
+    HPO_MAX_CELLS = 100_000
+    if adata.n_obs > HPO_MAX_CELLS:
+        _key = batch_key if isinstance(batch_key, str) else batch_key[0]
+        adata = _stratified_subsample(adata, [_key], HPO_MAX_CELLS)
+        print(f"HPO subsample: {adata.n_obs} cells")
 
     from utils import warmup_benchmark
     warmup_benchmark(batch_key, label_key)

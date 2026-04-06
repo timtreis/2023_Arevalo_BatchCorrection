@@ -41,16 +41,17 @@ build-scpoli = "[ containers/scpoli.sif -nt containers/scpoli.def ] && echo 'scp
 build-desc = { cmd = "[ containers/desc.sif -nt containers/desc.def ] && [ containers/desc.sif -nt containers/base.def ] && echo 'desc.sif is up to date' || apptainer build --force containers/desc.sif containers/desc.def", depends-on = ["build-base"] }
 build-r = "[ containers/r.sif -nt containers/r.def ] && echo 'r.sif is up to date' || apptainer build --force containers/r.sif containers/r.def"
 build-harmony-v1 = { cmd = "[ containers/harmony_v1.sif -nt containers/harmony_v1.def ] && [ containers/harmony_v1.sif -nt containers/base.def ] && echo 'harmony_v1.sif is up to date' || apptainer build --force containers/harmony_v1.sif containers/harmony_v1.def", depends-on = ["build-base"] }
-build-containers = { depends-on = ["build-scvi", "build-scibmetrics", "build-lightweight", "build-harmony-v1", "build-scpoli", "build-desc", "build-r"] }
+build-scibmetrics-gpu = { cmd = "[ containers/scibmetrics-gpu.sif -nt containers/scibmetrics-gpu.def ] && [ containers/scibmetrics-gpu.sif -nt containers/base.def ] && echo 'scibmetrics-gpu.sif is up to date' || apptainer build --force containers/scibmetrics-gpu.sif containers/scibmetrics-gpu.def", depends-on = ["build-base"] }
+build-containers = { depends-on = ["build-scvi", "build-scibmetrics", "build-scibmetrics-gpu", "build-lightweight", "build-harmony-v1", "build-scpoli", "build-desc", "build-r"] }
 
 # Shared snakemake args (shared.json is loaded first, scenario config overrides)
 # Usage: pixi run scenario-1  (or scenario-2, ..., scenario-7)
-scenario-1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
-scenario-2 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_2.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
-scenario-3 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_3.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
-scenario-4 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_4.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
-scenario-5 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_5.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
-scenario-7 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_7.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
+scenario-1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
+scenario-2 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_2.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
+scenario-3 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_3.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
+scenario-4 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_4.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
+scenario-5 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_5.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
+scenario-7 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_7.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
 
 unlock-1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
 unlock-2 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_2.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"
