@@ -1,6 +1,6 @@
 # JUMP-CP Integration: Phase 1 Progress
 
-**Last updated**: 2026-03-29
+**Last updated**: 2026-04-05
 **Target**: Nature Methods, Q3 2026
 **Research plan**: `~/lustre/projects/coach/projects/jump-cp-integration/task-list.md`
 
@@ -35,9 +35,9 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 |----------|---------|-------------|-----------|--------|
 | scenario_1 | source_6 | TARGET2 | Metadata_Batch | DONE (2026-03-28). All 15 methods, metrics, plots. PR #29 merged. |
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
-| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | RELAUNCHED 2026-04-01 on supergpu25 (H100 80GB), PID 4108981. Snakemake picked up sysvi HPO (2 remaining trials) + scpoli HPO+correction + aggregation + metrics + plots. 7/9 methods already done. R methods/DESC/scANVI auto-skipped. |
-| scenario_4 | 5 sources | TARGET2 | Metadata_Source | Not started |
-| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | Not started |
+| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-04). 9 methods (R/DESC/scANVI auto-skipped). Metrics re-run with kmeans NMI/ARI disabled for high-cardinality labels. Results: scpoli #1 (0.46), sysvi #2 (0.43), harmony_v2 #3 (0.43). |
+| scenario_4 | 5 sources | TARGET2 | Metadata_Source | DONE (2026-04-05). 14 methods (seurat_cca auto-skipped — 0 COMPLETE HPO trials). All metrics + plots. FAISS GPU incompatible with H100 sm_90, fell back to CPU. |
+| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | IN PROGRESS (2026-04-06). Metrics running on gpusrv57 (A100 80GB). scvi_normal dropped (sysVI is proper Gaussian VAE). |
 
 ### Tasks
 
@@ -53,15 +53,32 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] Investigate R method failures on S3 — root cause: R's 2^31 vector limit in intermediate computations (fastMNN `.average_correction`, Seurat `IntegrateLayers`). Full analysis: `tasks/r_methods_scalability.md`
 - [x] Implement auto-skip for R methods (fastMNN, seurat_cca, seurat_rpca) when input >100K cells — added to `Snakefile:45-61`, same pattern as DESC/scANVI skips. Dry-run verified on S1 (keep) and S3 (skip).
 - [x] Relaunch S3 — locks cleared, relaunched 2026-04-01 on supergpu25 (H100 80GB), PID 4108981. Snakemake DAG: sysvi HPO (2 trials) → sysvi correction → scpoli HPO → scpoli correction → aggregate → metrics → plots.
-- [ ] Verify S3 completion: check `all_methods.h5ad`, metrics parquets, and results_table.pdf
+- [x] Verify S3 completion: all_methods.h5ad (4.8 GB), metrics (mAP + scibmetrics + concat + pivot), plots (3 PDFs). Completed 2026-04-04.
+- [x] Re-run S3 metrics with kmeans NMI/ARI disabled (degenerate with 82K labels). Sphering dropped from tied-#1 to #5. Completed 2026-04-04.
 - [x] Fix scANVI broadcast_labels OOM for COMPOUND-plate scenarios — added auto-skip in Snakefile when `plate_types` includes COMPOUND
 - [x] Create wave2 config (`inputs/conf/scenario_wave2.json`) — sources 5,9,11, T2+COMPOUND, batch=Metadata_Source
-- [ ] Launch scenario_4: `pixi run scenario-4`
-- [ ] Launch scenario_5: `pixi run scenario-5`
+- [x] Launch scenario_4 — completed 2026-04-05. 14 methods (seurat_cca skipped, 0 COMPLETE trials). FAISS GPU→CPU fallback added for H100 compatibility. Snakefile updated to auto-skip methods with 0 COMPLETE HPO trials.
+- [x] Verify S4 completion: all_methods.h5ad (513 MB), 4 metric parquets, 3 plot PDFs. Done 2026-04-05 06:41.
+- [x] Launch scenario_5 — launched 2026-04-05 on supergpu23 (H100 80GB), PID 2021272. 37 jobs.
 - [ ] Verify all 15 methods complete per scenario (check `all_methods.h5ad`)
 - [ ] Verify results table PDFs generated per scenario
 - [ ] Compare Seurat methods on full data (failed on smoketest — should work here)
-- [ ] Commit and PR scenario 3-5 results (branch: feature/scenario-3-5-results)
+- [x] Push scalability + GPU metrics changes — PR #35 (feature/scalability-gpu-metrics) on timtreis/2023_Arevalo_BatchCorrection
+- [x] Add scvi_normal method (Gaussian likelihood scVI) — supersedes gaushvi/gaushanvi which needed custom scvi-tools fork. Added `--gene_likelihood` arg to `optimise_scvi.py` + `correct_with_scvi.py`, new rules in `tune.smk` + `correct.smk`, defaults CSV, Snakefile METHODS entry.
+- [x] Add auto-skip for methods with 0 COMPLETE HPO trials — `Snakefile` reads optuna CSVs at DAG time, skips methods where all trials failed (e.g. seurat_cca on S4).
+- [x] Add FAISS GPU→CPU fallback for H100/sm_90 — `rules/metrics.smk` detects GPU via nvidia-smi, sets `CUDA_VISIBLE_DEVICES=''` for H100/H200/B-series. Also added try/except in `run_scibmetrics_benchmarker.py` for Python-level FAISS GPU errors.
+- [x] Write reference mapping plan → `plans/reference_mapping.md` (scPoli/scArches, scVI online update, Symphony/Harmony, TARGET2 anchor ablation, evaluation strategy, paper presentation)
+- [x] S5: supergpu23 died during scpoli correction (epoch 705, early stopping never triggered). Relaunched on gpusrv57. Fixed scpoli `n_train_epochs` from 999999 → 400 in `correct_with_scpoli.py`. scpoli correction completed at 400 epoch cap. scvi_single re-HPO'd (script change triggered rerun, 30/30 done).
+- [ ] S5: scvi_normal HPO running on gpusrv57 (trial 1 of 30 at session end). Overnight script (`overnight_run_v2.sh`, PID 3354647) will auto-chain: S5 scvi_normal HPO → corrections → R failures → aggregation → metrics → plots → S1 → S2 → S3 → S4 (each with scvi_normal added).
+- [ ] After overnight: verify S5 + S1-S4 all complete with scvi_normal. Check `overnight_run_v2.log` for "ALL DONE".
+- [ ] Compare scvi_normal vs scvi_single across S1-S5 — if scvi_normal is clearly worse, drop it.
+- [x] Write annotation database comparison plan → `plans/annotation_comparison_study.md` (5 objective criteria: coverage, confidence, agreement, morphological predictivity, practical)
+- [x] Write formal annotation database analysis → `plans/annotation_database_analysis.md` (two-tier: DRH for MOA, ChEMBL bioactivity for target-level, with draft paper text)
+- [x] Create annotation comparison notebook structure → `exploration/annotation_comparison/` (README, 00_compound_registry.ipynb, 01_map_drh.ipynb prototype with standardized schema)
+- [ ] Run 00_compound_registry.ipynb + 01_map_drh.ipynb to verify prototype works
+- [ ] Create remaining database mapping notebooks (02_chembl_curated, 03_chembl_bioactivity, 04_opentargets, 05_refchemdb)
+- [ ] Create comparison notebooks (10_coverage, 11_agreement, 12_morphological_predictivity, 14_summary_figures)
+- [ ] Commit and PR scenario 3-5 results + scvi_normal + pipeline fixes (branch: feature/scenario-3-5-results)
 
 ---
 
@@ -238,7 +255,12 @@ Research completed 2026-03-29. Full documentation in:
 - [ ] Add pixi task for wave2 to `pixi.toml` (or run manually with snakemake --configfile)
 - [ ] Run wave2 scenario (3 sources, quick — good first test of new scenarios)
 - [ ] Run wave1 scenario (7 sources, large — main reference atlas candidate)
-- [ ] Design and run F4 reference mapping experiment (requires wave1 + wave2 embeddings)
+- [x] Design F4 reference mapping experiment → `plans/reference_mapping.md` (3 methods: scPoli/scArches, scVI online update, Symphony; TARGET2 anchor ablation; 5,392 evaluable compounds)
+- [ ] Create C4 scenario config (Wave 1 reference atlas: S2,S3,S6,S8,S10,S15, 384-well only)
+- [ ] Run C4 + wave2 preprocessing
+- [ ] Implement reference mapping scripts: `map_with_scpoli.py`, `map_with_scvi.py`, `map_with_symphony.py`
+- [ ] Run F4 reference mapping experiment (C4→wave2, 3 methods × 2-3 variants)
+- [ ] Run TARGET2 anchor ablation (3 conditions: full, no-T2, T2-ref-only)
 
 ---
 

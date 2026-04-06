@@ -44,7 +44,12 @@ def correct_with_scpoli(
     # pretraining, then train until early stopping.
     total_pretrain_budget = 4 if smoketest else 400
     n_pretrain_epochs = 2 if smoketest else int(total_pretrain_budget * pretrain_to_train_ratio)
-    n_train_epochs = 2 if smoketest else 999999
+    # Cap training epochs at 600.  scPoli's EarlyStopping with reduce_lr=True
+    # can extend effective patience to 500+ epochs past the minimum on large
+    # datasets, wasting hours of compute.  Observed best training epochs:
+    # S1=84, S2=209, S3=188, S4=101.  600 gives ~3x headroom over the worst
+    # case while preventing the runaway (S5 reached 700+ with 999999 cap).
+    n_train_epochs = 2 if smoketest else 600
 
     print("\nUsing the following hyperparameters:")
     print(f"- alpha_epoch_anneal: {alpha_epoch_anneal}")

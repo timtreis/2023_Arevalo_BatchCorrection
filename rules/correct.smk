@@ -298,6 +298,37 @@ rule methods_scvi_multi:
             &> '{log}'
         """
 
+rule methods_scvi_normal:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_scvi.py",
+        parameter_path="outputs/{scenario}/optimization/optuna_scvi_normal.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_scvi_normal.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scvi_normal.log"
+    container:
+        "containers/scvi.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        label_key=config["label_key"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        nvidia_gpu=1
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --parameter_path '{input.parameter_path}' \
+            --gene_likelihood normal \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
 rule methods_scanvi_single:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
