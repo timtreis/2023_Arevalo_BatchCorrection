@@ -14,11 +14,14 @@ METHODS = [
     "desc",
     "scvi_single",
     "scvi_multi",
+    # "scvi_normal",  # dropped: scVI's gene_likelihood="normal" has unstable exp() variance
+    #                  # parameterization (NaN crashes, GitHub #2103/#516). sysVI already
+    #                  # provides a proper Gaussian VAE with softplus + clamping + nan_to_num.
     "sysvi",
     "scanvi_single",
     "scanvi_multi",
-    # "gaushvi",  # deferred: custom scvi-tools fork needs investigation
-    # "gaushanvi",  # deferred: custom scvi-tools fork needs investigation
+    # "gaushvi",  # superseded by scvi_normal (which is itself superseded by sysvi)
+    # "gaushanvi",  # superseded: scANVI + Gaussian likelihood, same stability issues
     "scpoli",
     # "scpoli_pca", # performs quite a bit worse than normal scpoli
     "sphering",
@@ -68,6 +71,24 @@ if "COMPOUND" in config.get("plate_types", []):
     METHODS = [m for m in METHODS if m not in ("scanvi_single", "scanvi_multi")]
     print("NOTE: Skipping scANVI (COMPOUND plates → too many labels for broadcast_labels)")
 
+# Skip methods whose HPO produced zero COMPLETE trials (e.g. Seurat CCA failing
+# on certain data configurations). Without valid params, correction will crash.
+import csv as _csv
+_scenario = config.get("scenario", "")
+_methods_to_skip = []
+for _m in list(METHODS):
+    _optuna_name = _m.lower().replace("mnn", "mnn")  # fastMNN -> optuna_fastmnn
+    _optuna_path = f"outputs/{_scenario}/optimization/optuna_{_optuna_name}.csv"
+    try:
+        with open(_optuna_path) as _f:
+            _reader = _csv.DictReader(_f)
+            if not any(r.get("state") == "COMPLETE" for r in _reader):
+                _methods_to_skip.append(_m)
+    except (FileNotFoundError, Exception):
+        pass  # HPO not run yet; keep in list
+if _methods_to_skip:
+    METHODS = [m for m in METHODS if m not in _methods_to_skip]
+    print(f"NOTE: Skipping {_methods_to_skip} (0 COMPLETE HPO trials)")
 
 # Load rules
 include: "rules/common.smk"

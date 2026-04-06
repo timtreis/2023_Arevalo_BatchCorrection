@@ -38,10 +38,15 @@ def _make_faiss_gpu_knn():
         logger.warning("No GPU available for FAISS, falling back to pynndescent")
         return None
 
-    def faiss_gpu_knn(X: np.ndarray, k: int) -> NeighborsResults:
+    def faiss_knn(X: np.ndarray, k: int) -> NeighborsResults:
         X = np.ascontiguousarray(X, dtype=np.float32)
-        res = faiss.StandardGpuResources()
-        index = faiss.index_cpu_to_gpu(res, 0, faiss.IndexFlatL2(X.shape[1]))
+        index = faiss.IndexFlatL2(X.shape[1])
+        try:
+            res = faiss.StandardGpuResources()
+            index = faiss.index_cpu_to_gpu(res, 0, index)
+            logger.info("FAISS: using GPU KNN")
+        except (RuntimeError, AssertionError) as e:
+            logger.warning(f"FAISS GPU KNN failed ({e}), using CPU")
         index.add(X)
         distances_sq, indices = index.search(X, k)
         return NeighborsResults(
@@ -49,7 +54,7 @@ def _make_faiss_gpu_knn():
             distances=np.sqrt(np.maximum(distances_sq, 0.0)),
         )
 
-    return faiss_gpu_knn
+    return faiss_knn
 
 
 try:
@@ -67,8 +72,13 @@ except ImportError:
 def _compute_clustering_kmeans_patched(X, n_clusters):
     import faiss
     X = np.ascontiguousarray(X, dtype=np.float32)
-    kmeans = faiss.Kmeans(X.shape[1], n_clusters, niter=20, gpu=True, seed=0)
-    kmeans.train(X)
+    try:
+        kmeans = faiss.Kmeans(X.shape[1], n_clusters, niter=20, gpu=True, seed=0)
+        kmeans.train(X)
+    except (RuntimeError, AssertionError):
+        logger.warning("FAISS GPU KMeans failed, falling back to CPU")
+        kmeans = faiss.Kmeans(X.shape[1], n_clusters, niter=20, gpu=False, seed=0)
+        kmeans.train(X)
     _, labels = kmeans.index.search(X, 1)
     return labels.ravel()
 

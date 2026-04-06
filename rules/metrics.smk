@@ -59,7 +59,10 @@ rule metrics_run_scibmetrics_benchmarker:
     threads: 6
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && python {input.script} '{input.adata_path}' '{output.path}' '{params.batch_key}' '{params.eval_keys}' '{params.methods}' &> {log}
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1) && \
+        case "$GPU_NAME" in *H100*|*H200*|*B100*|*B200*) export CUDA_VISIBLE_DEVICES=''; echo "GPU $GPU_NAME: FAISS not compiled for sm_90+, forcing CPU" ;; esac && \
+        python {input.script} '{input.adata_path}' '{output.path}' '{params.batch_key}' '{params.eval_keys}' '{params.methods}' &> {log}
         """
         
 rule metrics_mean_average_precision:

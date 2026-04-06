@@ -15,6 +15,7 @@ def correct_with_scvi(
     output_path: str,
     multiple_covariates: bool = False,
     smoketest: bool = False,
+    gene_likelihood: str = "zinb",
 ):
     """scVI correction"""
 
@@ -42,8 +43,11 @@ def correct_with_scvi(
     adata = io.to_anndata(dframe_path)
     meta = adata.obs.reset_index(drop=True).copy()
 
-    min_value = adata.X.min()
-    adata.X -= min_value
+    # For ZINB/NB likelihoods, shift data to non-negative (required by count models).
+    # For normal likelihood, no shift needed (Gaussian handles negative values).
+    if gene_likelihood != "normal":
+        min_value = adata.X.min()
+        adata.X -= min_value
 
     if multiple_covariates:
         if isinstance(batch_key, list) and len(batch_key) == 1:
@@ -80,16 +84,25 @@ def correct_with_scvi(
         n_latent=n_latent,
         n_layers=n_layers,
         dropout_rate=dropout_rate,
+        gene_likelihood=gene_likelihood,
     )
     vae.view_anndata_setup(adata=adata)
-    vae.train(
+
+    # Gradient clipping stabilizes training with gene_likelihood="normal",
+    # which can produce NaN gradients on certain architectures.
+    train_kwargs = dict(
         max_epochs=n_epochs,
         early_stopping=True,
         early_stopping_monitor="validation_loss",
     )
+    if gene_likelihood == "normal":
+        train_kwargs["gradient_clip_val"] = 1.0
+
+    vae.train(**train_kwargs)
 
     vals = vae.get_latent_representation()
-    features = [f"scvi_{i}" for i in range(vals.shape[1])]
+    prefix = "scvi_normal" if gene_likelihood == "normal" else "scvi"
+    features = [f"{prefix}_{i}" for i in range(vals.shape[1])]
     io.merge_parquet(meta, vals, features, output_path)
 
 
@@ -102,6 +115,8 @@ if __name__ == "__main__":
     parser.add_argument("--parameter_path", required=True, help="Path to the parameter file")
     parser.add_argument("--output_path", required=True, help="Path to save corrected data")
     parser.add_argument("--smoketest", action="store_true", help="Run a smoketest with limited epochs")
+    parser.add_argument("--gene_likelihood", default="zinb", choices=["zinb", "nb", "normal"],
+                        help="Observation model likelihood (default: zinb). Use 'normal' for continuous features.")
 
     args = parser.parse_args()
 
@@ -113,4 +128,5 @@ if __name__ == "__main__":
         parameter_path=args.parameter_path,
         output_path=args.output_path,
         smoketest=args.smoketest,
+        gene_likelihood=args.gene_likelihood,
     )
