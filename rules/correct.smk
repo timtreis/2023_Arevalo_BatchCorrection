@@ -551,7 +551,7 @@ rule methods_fastMNN:
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_fastmnn.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
@@ -565,17 +565,17 @@ rule methods_fastMNN:
             &> '{log}'
         """
 
-rule methods_seurat_cca:
+rule methods_seurat_cca_v4:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_seurat.R",
-        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca.csv"
+        script="scripts/correct_with_seurat_v4.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca_v4.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca_v4.parquet"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca_v4.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="cca",
@@ -591,17 +591,69 @@ rule methods_seurat_cca:
             &> '{log}'
         """
 
-rule methods_seurat_rpca:
+rule methods_seurat_rpca_v4:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_seurat.R",
-        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca.csv"
+        script="scripts/correct_with_seurat_v4.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca_v4.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca_v4.parquet"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca_v4.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        method="rpca",
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        Rscript '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --method '{params.method}' \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            &> '{log}'
+        """
+
+rule methods_seurat_cca_v5:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_seurat_v5.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca_v5.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca_v5.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca_v5.log"
+    container:
+        "containers/r_v5.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        method="cca",
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        Rscript '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --method '{params.method}' \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            &> '{log}'
+        """
+
+rule methods_seurat_rpca_v5:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_seurat_v5.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca_v5.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca_v5.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca_v5.log"
+    container:
+        "containers/r_v5.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="rpca",

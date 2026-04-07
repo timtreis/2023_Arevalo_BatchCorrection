@@ -25,8 +25,10 @@ METHODS = [
     "scpoli",
     # "scpoli_pca", # performs quite a bit worse than normal scpoli
     "sphering",
-    "seurat_cca",
-    "seurat_rpca",
+    "seurat_cca_v4",
+    "seurat_rpca_v4",
+    "seurat_cca_v5",
+    "seurat_rpca_v5",
     # "cpDistiller_B",
     # "cpDistiller_S",
     # "cpDistiller_SBP",
@@ -50,7 +52,7 @@ except (FileNotFoundError, Exception):
 # .average_correction smoothing kernel) and memory allocation patterns in Seurat's
 # IntegrateLayers. See tasks/r_methods_scalability.md for full analysis.
 R_METHODS_MAX_CELLS = 100_000
-_r_methods = ("fastMNN", "seurat_cca", "seurat_rpca")
+_r_methods = ("fastMNN", "seurat_cca_v4", "seurat_rpca_v4", "seurat_cca_v5", "seurat_rpca_v5")
 try:
     _n_cells_r = _n_cells  # reuse from DESC check above
 except NameError:

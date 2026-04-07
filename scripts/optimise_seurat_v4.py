@@ -53,7 +53,8 @@ def objective(trial, input_data, batch_key, label_key, method, cache_path, k_wei
     k_weight = trial.suggest_int("k_weight", 5, k_weight_max)
 
     cmd = [
-        "Rscript", "scripts/run_seurat_trial.R",
+        "Rscript", "scripts/run_seurat_trial_v4.R",
+        "--input_data", input_data,
         "--batch_key", batch_key,
         "--label_key", label_key,
         "--method", method,
@@ -61,11 +62,6 @@ def objective(trial, input_data, batch_key, label_key, method, cache_path, k_wei
         "--k_anchor", str(k_anchor),
         "--k_weight", str(k_weight),
     ]
-
-    if cache_path and os.path.exists(cache_path):
-        cmd += ["--cached_rds", cache_path]
-    else:
-        cmd += ["--input_data", input_data]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -94,18 +90,7 @@ def optimize_seurat(input_path, batch_key, label_key, method, n_trials, output_p
     if smoketest:
         n_trials = 2
 
-    # Build cached Seurat object (parquet → .rds) once before all trials
-    cache_dir = os.path.dirname(output_path) or "."
-    cache_path = os.path.join(cache_dir, f"_seurat_{method}_cache.rds")
-    if not _build_cache(input_path, batch_key, cache_path):
-        logger.warning("Cache build failed, falling back to per-trial parquet loading")
-        cache_path = None
-
     # Adapt k_weight upper bound to the smallest batch.
-    # Seurat's FindWeights requires k_weight <= anchor count per pair.
-    # Anchor count scales with batch size and cross-batch similarity.
-    # With heterogeneous sources (different microscopes), anchor counts can be
-    # much lower than batch size, so we use a conservative fraction.
     min_batch = _get_min_batch_size(input_path, batch_key)
     if min_batch is not None:
         k_weight_max = min(200, max(20, min_batch // 10))
@@ -119,20 +104,14 @@ def optimize_seurat(input_path, batch_key, label_key, method, n_trials, output_p
         sampler=optuna.samplers.TPESampler(seed=42),
     )
 
-    # Seed with a conservative first trial: high k_anchor (more anchors),
-    # low k_weight (safe), and Arevalo default dims.
     study.enqueue_trial({"dims": 30, "k_anchor": 30, "k_weight": min(k_weight_max, 10)})
 
     study.optimize(
-        lambda trial: objective(trial, input_path, batch_key, label_key, method, cache_path, k_weight_max),
+        lambda trial: objective(trial, input_path, batch_key, label_key, method, None, k_weight_max),
         n_trials=n_trials,
         catch=(Exception,),
     )
     save_optuna_results(study, output_path)
-
-    # Clean up cache
-    if cache_path and os.path.exists(cache_path):
-        os.remove(cache_path)
 
 
 if __name__ == "__main__":

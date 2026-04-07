@@ -39,10 +39,11 @@ build-scibmetrics = { cmd = "[ containers/scibmetrics.sif -nt containers/scibmet
 build-lightweight = { cmd = "[ containers/lightweight.sif -nt containers/lightweight.def ] && [ containers/lightweight.sif -nt containers/base.def ] && echo 'lightweight.sif is up to date' || apptainer build --force containers/lightweight.sif containers/lightweight.def", depends-on = ["build-base"] }
 build-scpoli = "[ containers/scpoli.sif -nt containers/scpoli.def ] && echo 'scpoli.sif is up to date' || apptainer build --force containers/scpoli.sif containers/scpoli.def"
 build-desc = { cmd = "[ containers/desc.sif -nt containers/desc.def ] && [ containers/desc.sif -nt containers/base.def ] && echo 'desc.sif is up to date' || apptainer build --force containers/desc.sif containers/desc.def", depends-on = ["build-base"] }
-build-r = "[ containers/r.sif -nt containers/r.def ] && echo 'r.sif is up to date' || apptainer build --force containers/r.sif containers/r.def"
+build-r-v4 = "[ containers/r_v4.sif -nt containers/r_v4.def ] && echo 'r_v4.sif is up to date' || apptainer build --force containers/r_v4.sif containers/r_v4.def"
+build-r-v5 = "[ containers/r_v5.sif -nt containers/r_v5.def ] && echo 'r_v5.sif is up to date' || apptainer build --force containers/r_v5.sif containers/r_v5.def"
 build-harmony-v1 = { cmd = "[ containers/harmony_v1.sif -nt containers/harmony_v1.def ] && [ containers/harmony_v1.sif -nt containers/base.def ] && echo 'harmony_v1.sif is up to date' || apptainer build --force containers/harmony_v1.sif containers/harmony_v1.def", depends-on = ["build-base"] }
 build-scibmetrics-gpu = { cmd = "[ containers/scibmetrics-gpu.sif -nt containers/scibmetrics-gpu.def ] && [ containers/scibmetrics-gpu.sif -nt containers/base.def ] && echo 'scibmetrics-gpu.sif is up to date' || apptainer build --force containers/scibmetrics-gpu.sif containers/scibmetrics-gpu.def", depends-on = ["build-base"] }
-build-containers = { depends-on = ["build-scvi", "build-scibmetrics", "build-scibmetrics-gpu", "build-lightweight", "build-harmony-v1", "build-scpoli", "build-desc", "build-r"] }
+build-containers = { depends-on = ["build-scvi", "build-scibmetrics", "build-scibmetrics-gpu", "build-lightweight", "build-harmony-v1", "build-scpoli", "build-desc", "build-r-v4", "build-r-v5"] }
 
 # Shared snakemake args (shared.json is loaded first, scenario config overrides)
 # Usage: pixi run scenario-1  (or scenario-2, ..., scenario-7)
@@ -62,6 +63,8 @@ unlock-7 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile in
 
 scenario-8 = "MEM_MB=$(python -c \"import os; pn=os.environ.get('SLURM_MEM_PER_NODE',''); pc=os.environ.get('SLURM_MEM_PER_CPU',''); nc=os.environ.get('SLURM_CPUS_ON_NODE',''); print(int(pn) if pn else int(pc)*int(nc) if pc and nc else 256000)\") && PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_8.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 mem_mb=$MEM_MB --keep-going"
 scenario-8-defaults = "MEM_MB=$(python -c \"import os; pn=os.environ.get('SLURM_MEM_PER_NODE',''); pc=os.environ.get('SLURM_MEM_PER_CPU',''); nc=os.environ.get('SLURM_CPUS_ON_NODE',''); print(int(pn) if pn else int(pc)*int(nc) if pc and nc else 256000)\") && PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_8_defaults.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 mem_mb=$MEM_MB --keep-going"
-scenario-1-defaults = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1_defaults.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=8 --keep-going"
+scenario-1-defaults = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1_defaults.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
+scenario-2-defaults = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_2_defaults.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
+scenario-3-defaults = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_3_defaults.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
 
 unlock-8 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/scenario_8.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=8 --unlock"

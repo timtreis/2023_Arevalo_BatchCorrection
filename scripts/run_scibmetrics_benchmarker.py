@@ -85,6 +85,84 @@ def _compute_clustering_kmeans_patched(X, n_clusters):
 _nmi_ari._compute_clustering_kmeans = _compute_clustering_kmeans_patched
 
 
+# --- Parallel kBET per label ---
+# scib-metrics computes kBET by iterating over all unique labels sequentially.
+# With 82K compound labels, ~80K are trivially skipped (< 10 cells or single batch)
+# but the loop overhead is significant. Parallelizing with joblib speeds this up
+# by distributing labels across CPU cores.
+
+def _kbet_per_label_parallel(X, batches, labels, alpha=0.05, diffusion_n_comps=100, return_df=False):
+    """Drop-in replacement for kbet_per_label with joblib parallelization."""
+    from joblib import Parallel, delayed
+    from scib_metrics.metrics._kbet import kbet, diffusion_nn
+    import scipy.sparse
+
+    batches = np.asarray(pd.Categorical(batches).codes)
+    labels = np.asarray(labels)
+    conn_graph = X.knn_graph_connectivities
+    size_max = 2**31 - 1
+    unique_labels = np.unique(labels)
+
+    def _compute_one_label(clus):
+        mask = labels == clus
+        conn_graph_sub = conn_graph[mask, :][:, mask]
+        conn_graph_sub.sort_indices()
+        n_obs = conn_graph_sub.shape[0]
+        batches_sub = batches[mask]
+
+        if np.logical_or(n_obs < 10, len(np.unique(batches_sub)) == 1):
+            return clus, np.nan
+
+        quarter_mean = np.floor(np.mean(pd.Series(batches_sub).value_counts()) / 4).astype("int")
+        k0 = np.min([70, np.max([10, quarter_mean])])
+        if k0 * n_obs >= size_max:
+            k0 = np.floor(size_max / n_obs).astype("int")
+
+        n_comp, labs = scipy.sparse.csgraph.connected_components(conn_graph_sub, connection="strong")
+
+        if n_comp == 1:
+            try:
+                nc = np.min([diffusion_n_comps, n_obs - 1])
+                nn_graph_sub = diffusion_nn(conn_graph_sub, k=k0, n_comps=nc)
+                score, _, _ = kbet(nn_graph_sub, batches=batches_sub, alpha=alpha)
+            except ValueError:
+                score = 0
+        else:
+            comp_size = pd.Series(labs).value_counts()
+            comp_size_thresh = 3 * k0
+            idx_nonan = np.flatnonzero(np.in1d(labs, comp_size[comp_size >= comp_size_thresh].index))
+            if len(idx_nonan) / len(labs) >= 0.75:
+                conn_sub_sub = conn_graph_sub[idx_nonan, :][:, idx_nonan]
+                conn_sub_sub.sort_indices()
+                try:
+                    nc = np.min([diffusion_n_comps, conn_sub_sub.shape[0] - 1])
+                    nn_sub_sub = diffusion_nn(conn_sub_sub, k=k0, n_comps=nc)
+                    score, _, _ = kbet(nn_sub_sub, batches=batches_sub[idx_nonan], alpha=alpha)
+                except ValueError:
+                    score = 0
+            else:
+                score = 0
+
+        return clus, score
+
+    results = Parallel(n_jobs=-1, prefer="threads")(
+        delayed(_compute_one_label)(clus) for clus in unique_labels
+    )
+
+    kbet_scores = pd.DataFrame(results, columns=["cluster", "kBET"])
+    final_score = np.nanmean(kbet_scores["kBET"])
+    if not return_df:
+        return final_score
+    else:
+        return final_score, kbet_scores
+
+import scib_metrics.metrics._kbet as _kbet_module
+_kbet_module.kbet_per_label = _kbet_per_label_parallel
+# Also patch the top-level reference used by Benchmarker (getattr(scib_metrics, metric_name))
+import scib_metrics as _scib_metrics
+_scib_metrics.kbet_per_label = _kbet_per_label_parallel
+
+
 def run_scibmetrics_benchmarker(
     adata_path, output_path, batch_key, eval_keys, methods
 ):
