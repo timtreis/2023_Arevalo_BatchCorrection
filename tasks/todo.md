@@ -35,9 +35,9 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 |----------|---------|-------------|-----------|--------|
 | scenario_1 | source_6 | TARGET2 | Metadata_Batch | DONE (2026-03-28). All 15 methods, metrics, plots. PR #29 merged. |
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
-| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | RERUNNING HPO (2026-04-07). 100K subsampling applied. 46% done on supergpu30. |
+| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | IN PROGRESS (2026-04-11). 100K subsampling HPO rerun. All 10 methods HPO'd + corrected. scpoli correction running on gpusrv53. Aggregation + metrics + plots pending. |
 | scenario_4 | 5 sources | TARGET2 | Metadata_Source | DONE (2026-04-05). 14 methods (seurat_cca auto-skipped — 0 COMPLETE HPO trials). All metrics + plots. FAISS GPU incompatible with H100 sm_90, fell back to CPU. |
-| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | INCOMPLETE (2026-04-07). 9 corrections done (no scvi_normal — dropped). Missing: aggregation, scibmetrics, plots. Needs relaunch. |
+| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-11). 9 methods (no scvi_normal — dropped). All metrics + 3 plot PDFs generated on gpusrv53. |
 
 ### Tasks
 
@@ -72,8 +72,8 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] ~~S5: scvi_normal HPO~~ — scvi_normal dropped entirely. NaN crashes in encoder (Gaussian likelihood unstable on Cell Painting features). sysVI already provides a proper Gaussian VAE.
 - [x] ~~Compare scvi_normal vs scvi_single~~ — moot, scvi_normal dropped.
 - [x] Snakemake `--touch --forceall` on S1, S2, S4 to accept existing outputs despite script hash changes (2026-04-07). Verified: "Nothing to be done" on all three.
-- [ ] S3: HPO rerun with 100K subsampling — launched 2026-04-07 on supergpu30 (H100 80GB). 46% done at session end. Log: `outputs/scenario_3_rerun_20260407.log`.
-- [ ] S5: relaunch to finish aggregation + metrics + plots for 9 completed methods. No scvi_normal.
+- [x] S3: HPO rerun with 100K subsampling — launched 2026-04-07 on supergpu30, relaunched 2026-04-10 on gpusrv53. All 10 methods re-HPO'd + 9/10 corrected. scpoli HPO+correction was the last piece (node died mid-scpoli-HPO on supergpu30, completed on gpusrv53 2026-04-11).
+- [x] S5: relaunch to finish aggregation + metrics + plots for 9 completed methods. Completed 2026-04-11 on gpusrv53. All metrics + 3 plot PDFs generated.
 - [x] Split Seurat into v4 (Arevalo's version) and v5 (current). See `plans/seurat_v4_v5_split.md`. Container `r_v4.sif` built 2026-04-07 (Seurat 4.4.0). `r.sif` renamed to `r_v5.sif`. fastMNN now uses `r_v4.sif`.
 - [ ] Re-run S1/S2/S4 with new Seurat v4/v5 method names (old `seurat_cca`/`seurat_rpca` outputs are orphaned — need HPO+correction under new names).
 - [ ] Re-run S1/S2/S3 defaults with v4 Seurat methods (previous S1 defaults had 3 R method failures due to Seurat v5 + Arevalo params mismatch).
@@ -83,6 +83,7 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [ ] Run 00_compound_registry.ipynb + 01_map_drh.ipynb to verify prototype works
 - [ ] Create remaining database mapping notebooks (02_chembl_curated, 03_chembl_bioactivity, 04_opentargets, 05_refchemdb)
 - [ ] Create comparison notebooks (10_coverage, 11_agreement, 12_morphological_predictivity, 14_summary_figures)
+- [ ] S3: pipeline still running on gpusrv53 (SLURM job 35111972, ~5h remaining). scpoli correction at ~57%, then aggregation + scibmetrics + mAP + plots. Should complete autonomously.
 - [ ] Commit and PR scenario 3-5 results + pipeline fixes (branch: feature/scenario-3-5-results)
 
 ### Defaults vs HPO Comparison (paper figure)
