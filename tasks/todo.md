@@ -75,7 +75,8 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] S3: HPO rerun with 100K subsampling — launched 2026-04-07 on supergpu30, relaunched 2026-04-10 on gpusrv53. All 10 methods re-HPO'd + 9/10 corrected. scpoli HPO+correction was the last piece (node died mid-scpoli-HPO on supergpu30, completed on gpusrv53 2026-04-11).
 - [x] S5: relaunch to finish aggregation + metrics + plots for 9 completed methods. Completed 2026-04-11 on gpusrv53. All metrics + 3 plot PDFs generated.
 - [x] Split Seurat into v4 (Arevalo's version) and v5 (current). See `plans/seurat_v4_v5_split.md`. Container `r_v4.sif` built 2026-04-07 (Seurat 4.4.0). `r.sif` renamed to `r_v5.sif`. fastMNN now uses `r_v4.sif`.
-- [ ] Re-run S1/S2/S4 HPO with new Seurat v4/v5 method names — queued in `scripts/resume_pipeline.sh` (touch existing → run missing). Blocked on S3 defaults completion. S4 already has _v4 corrections; needs _v5 HPO (30 trials × 2 methods).
+- [ ] Re-run S1/S2/S4 HPO with new Seurat v4/v5 method names — queued in `scripts/resume_pipeline.sh` (touch existing → run missing). Blocked on S3 defaults completion AND fresh SLURM allocation. S4 already has _v4 corrections; needs _v5 HPO (30 trials × 2 methods).
+- [ ] Next session: launch fresh SLURM allocation, then `nohup bash scripts/resume_pipeline.sh` to resume (Snakemake will skip completed corrections and restart scibmetrics).
 - [x] Re-run S1/S2 defaults with v4 Seurat methods — completed 2026-04-12. S1 defaults: 15 methods including seurat_cca_v4/rpca_v4/cca_v5/rpca_v5. S2 defaults: same.
 - [x] Write annotation database comparison plan → `plans/annotation_comparison_study.md` (5 objective criteria: coverage, confidence, agreement, morphological predictivity, practical)
 - [x] Write formal annotation database analysis → `plans/annotation_database_analysis.md` (two-tier: DRH for MOA, ChEMBL bioactivity for target-level, with draft paper text)
@@ -101,7 +102,7 @@ Selected scenarios: S1 (trivial), S2 (cross-source), S3 (COMPOUND plates).
 - [x] Add pixi tasks: `scenario-1-defaults`, `scenario-2-defaults`, `scenario-3-defaults`
 - [x] Run S1 defaults — completed 2026-04-12 03:17 on gpusrv53. 15 methods (all including seurat v4/v5 + fastMNN). All metrics + plots.
 - [x] Run S2 defaults — completed 2026-04-12 14:04 on gpusrv53. 15 methods. All metrics + plots.
-- [ ] Run S3 defaults — IN PROGRESS on gpusrv53 (resume_pipeline.sh). harmony_v1 at iter 6/~20 (~18 min/iter), scpoli at 52%/400 epochs. Expect completion ~2026-04-12 21:00. Then scvi/sysvi + aggregation + metrics + plots.
+- [ ] Run S3 defaults — PARTIAL on gpusrv53 as of 2026-04-12 21:21. All 8 corrections done (combat, sphering, scanorama, harmony_v1/v2, scpoli, scvi_single/multi, sysvi). mAP done. Scibmetrics just started `isolated_labels`. **BLOCKER**: SLURM allocation gpusrv53 (JobID 35125000) expires 2026-04-12 ~22:39 (80 min left) but scibmetrics needs ~8hr. Will get killed mid-isolated_labels. Resume needed on fresh allocation — Snakemake will pick up from existing corrections + mAP.
 - [ ] Generate side-by-side results tables (defaults vs HPO) for paper
 
 ---

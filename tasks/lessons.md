@@ -197,6 +197,11 @@
 - Fix: always use `pixi run scenario-X` or `pixi run -- bash -c 'PATH=... snakemake ...'`.
 - The overnight_pipeline.sh failure (S2/S3 defaults + S1/S2/S4 HPO all failed) was caused by this. resume_pipeline.sh uses `pixi run` and works.
 
+### Scibmetrics on 244K cells takes ~8 hours (2026-04-12)
+- `isolated_labels` metric alone is ~55 min per embedding. With 9 embeddings × 10 metrics, total run is ~8 hours on 244K cells.
+- Plan SLURM allocations accordingly: scibmetrics on S3-size scenarios needs the full run + buffer. A 24h job with ~15h of method corrections already consumed will NOT fit scibmetrics.
+- Mitigation: run corrections and scibmetrics in separate SLURM jobs, or request longer allocations (>24h partitions) upfront.
+
 ### Defaults-mode methods can be dramatically slower than HPO'd (2026-04-12)
 - harmony_v1 with default `max_iter_harmony=999999` on 244K cells: ~18 min/iteration, needs ~20 iterations = ~6 hours. HPO'd harmony uses 10-50 iterations max.
 - scpoli with default params on 244K cells: early stopping never fires (LR reduction resets patience), runs full 400 epoch cap = ~6 hours. HPO'd scpoli converges in ~50 epochs.
