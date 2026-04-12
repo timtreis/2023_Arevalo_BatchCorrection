@@ -190,6 +190,18 @@
 - sysVI already provides a proper Gaussian VAE with softplus + clamping + nan_to_num guards. No need for scvi_normal.
 - scvi_normal removed from METHODS list (plumbing kept in scripts for potential future use).
 
+### Always use `pixi run` for snakemake, never call the binary directly (2026-04-12)
+- Calling `.pixi/envs/default/bin/snakemake` directly skips pixi's `LD_LIBRARY_PATH` setup.
+- System `/lib64/libstdc++.so.6` is too old for pixi env's ICU libs (`CXXABI_1.3.15` not found).
+- This manifests as an `ImportError` in `pycytominer → sqlite3 → dbapi2` during Snakefile parsing.
+- Fix: always use `pixi run scenario-X` or `pixi run -- bash -c 'PATH=... snakemake ...'`.
+- The overnight_pipeline.sh failure (S2/S3 defaults + S1/S2/S4 HPO all failed) was caused by this. resume_pipeline.sh uses `pixi run` and works.
+
+### Defaults-mode methods can be dramatically slower than HPO'd (2026-04-12)
+- harmony_v1 with default `max_iter_harmony=999999` on 244K cells: ~18 min/iteration, needs ~20 iterations = ~6 hours. HPO'd harmony uses 10-50 iterations max.
+- scpoli with default params on 244K cells: early stopping never fires (LR reduction resets patience), runs full 400 epoch cap = ~6 hours. HPO'd scpoli converges in ~50 epochs.
+- This is actually useful data for the defaults-vs-HPO comparison paper figure — quantifies the compute cost of not tuning.
+
 ### TARGET2 dominates evaluation for most scenarios (2026-03-29)
 - For most scenarios, COMPOUND plate cross-source overlap is <1%. The 306 TARGET2 compounds (present in ALL sources) dominate mAP evaluation.
 - Exception: Wave 2 (84.8% overlap), C8 with bridge source S7 (6.3%), and cross-wave scenarios.

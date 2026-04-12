@@ -8,14 +8,22 @@ From: containers/base.sif
     export JAX_PLATFORMS=""
     # Prepend pip-installed cuDNN 9.8 so it takes priority over host cuDNN 8.x
     # injected by Apptainer --nv.
-    export LD_LIBRARY_PATH=/usr/local/lib/python3.11/dist-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=/usr/local/lib/python3.11/dist-packages/nvidia/cudnn/lib:/opt/conda/envs/faiss/lib:$LD_LIBRARY_PATH
+    # conda-forge faiss-gpu (has sm_90 kernels for H100/H200)
+    export PYTHONPATH=/opt/conda/envs/faiss/lib/python3.11/site-packages:$PYTHONPATH
 
 %post
     # JAX with CUDA support
     python -m pip install --no-cache-dir "jax[cuda12]"
 
-    # FAISS GPU for brute-force exact KNN (uses CUDA/cuBLAS, not cuDNN)
-    python -m pip install --no-cache-dir faiss-gpu-cu12
+    # FAISS GPU for brute-force exact KNN (uses CUDA/cuBLAS, not cuDNN).
+    # The PyPI faiss-gpu-cu12 wheel lacks sm_90 kernels (H100/H200), so we
+    # install from conda-forge via micromamba which ships all architectures.
+    apt-get update && apt-get install -y bzip2 && rm -rf /var/lib/apt/lists/*
+    curl -sL https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C /usr/local bin/micromamba
+    micromamba create -y -n faiss -c conda-forge \
+        python=3.11 faiss-gpu cuda-version=12 \
+        --root-prefix /opt/conda
 
     # Additional packages not provided by base
     python -m pip install --no-cache-dir \

@@ -24,7 +24,7 @@ rule methods_combat:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -48,7 +48,7 @@ rule methods_sphering:
         values_norm="DMSO",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --method '{params.method}' \
@@ -74,7 +74,7 @@ rule methods_harmony_v1:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode 'harmony' \
             --input_data '{input.data}' \
@@ -101,7 +101,7 @@ rule methods_harmony_v2:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode 'harmony' \
             --input_data '{input.data}' \
@@ -127,7 +127,7 @@ rule methods_harmony_pca:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode 'harmony_pca' \
             --input_data '{input.data}' \
@@ -153,7 +153,7 @@ rule methods_scanorama:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode '{params.method}' \
             --input_data '{input.data}' \
@@ -178,7 +178,7 @@ rule methods_scanorama_pca:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode '{params.method}' \
             --input_data '{input.data}' \
@@ -201,7 +201,7 @@ rule methods_mnn:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -227,7 +227,7 @@ rule methods_desc:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -256,7 +256,7 @@ rule methods_scvi_single:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -286,7 +286,7 @@ rule methods_scvi_multi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -317,7 +317,7 @@ rule methods_scvi_normal:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -349,7 +349,7 @@ rule methods_scanvi_single:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -382,7 +382,7 @@ rule methods_scanvi_multi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -413,7 +413,7 @@ rule methods_gaushvi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -441,7 +441,7 @@ rule methods_gaushanvi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -470,7 +470,7 @@ rule methods_sysvi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -500,7 +500,7 @@ rule methods_scpoli:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -530,7 +530,7 @@ rule methods_scpoli_pca:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -556,7 +556,7 @@ rule methods_fastMNN:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -581,7 +581,7 @@ rule methods_seurat_cca_v4:
         method="cca",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -607,7 +607,7 @@ rule methods_seurat_rpca_v4:
         method="rpca",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -633,7 +633,7 @@ rule methods_seurat_cca_v5:
         method="cca",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -659,7 +659,7 @@ rule methods_seurat_rpca_v5:
         method="rpca",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \

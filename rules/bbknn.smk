@@ -14,7 +14,7 @@ rule bbknn_clustering:
         "containers/lightweight.sif"
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \

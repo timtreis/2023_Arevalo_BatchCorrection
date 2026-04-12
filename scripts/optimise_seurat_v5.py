@@ -103,12 +103,13 @@ def optimize_seurat(input_path, batch_key, label_key, method, n_trials, output_p
 
     # Adapt k_weight upper bound to the smallest batch.
     # Seurat's FindWeights requires k_weight <= anchor count per pair.
-    # Anchor count scales with batch size and cross-batch similarity.
-    # With heterogeneous sources (different microscopes), anchor counts can be
-    # much lower than batch size, so we use a conservative fraction.
+    # With plate-level batches (many small groups), anchor counts are high
+    # and k_weight needs to be ≥50 for good results. With source-level batches
+    # (few large groups, different microscopes), anchor counts can be much
+    # lower, so we cap more conservatively.
     min_batch = _get_min_batch_size(input_path, batch_key)
     if min_batch is not None:
-        k_weight_max = min(200, max(20, min_batch // 10))
+        k_weight_max = min(200, max(50, min_batch // 10))
         logger.info("min_batch_size=%d → k_weight range [5, %d]", min_batch, k_weight_max)
     else:
         k_weight_max = 200

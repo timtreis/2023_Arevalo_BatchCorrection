@@ -34,11 +34,10 @@ From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
     ln -sf /usr/bin/python3.11 /usr/local/bin/python3
 
     # Shared packages used across all method containers.
-    # numpy<2 is required because scib-metrics uses np.in1d which was removed in NumPy 2.0.
     python -m pip install --no-cache-dir \
-        "numpy<2" \
+        "numpy>=2,<3" \
         anndata \
-        pandas \
+        "pandas>=2,<3" \
         scanpy \
         pyarrow \
         scib-metrics \

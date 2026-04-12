@@ -7,6 +7,7 @@ suppressPackageStartupMessages({
   library(optparse)
   library(arrow)
   library(Seurat)
+  library(dplyr)
 })
 
 options(future.globals.maxSize = +Inf)

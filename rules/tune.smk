@@ -91,7 +91,7 @@ rule optimize_scpoli:
         mem_mb=_method_mem_mb("scpoli")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -123,7 +123,7 @@ rule optimize_scvi_single:
         mem_mb=_method_mem_mb("scvi_single")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -155,7 +155,7 @@ rule optimize_scvi_multi:
         mem_mb=_method_mem_mb("scvi_multi")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -188,7 +188,7 @@ rule optimize_scvi_normal:
         mem_mb=_method_mem_mb("scvi_normal")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -222,7 +222,7 @@ rule optimize_scanvi_single:
         mem_mb=_method_mem_mb("scanvi_single")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -255,7 +255,7 @@ rule optimize_scanvi_multi:
         mem_mb=_method_mem_mb("scanvi_multi")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -289,7 +289,7 @@ rule optimize_sysvi:
         mem_mb=_method_mem_mb("sysvi")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -319,7 +319,7 @@ rule optimize_harmony_v1:
         mem_mb=_method_mem_mb("harmony_v1")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -349,7 +349,7 @@ rule optimize_harmony_v2:
         mem_mb=_method_mem_mb("harmony_v2")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -379,7 +379,7 @@ rule optimize_scanorama:
         mem_mb=_method_mem_mb("scanorama")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -410,7 +410,7 @@ rule optimize_desc:
         mem_mb=_method_mem_mb("desc")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \

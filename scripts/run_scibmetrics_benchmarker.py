@@ -29,24 +29,41 @@ def _make_faiss_gpu_knn():
 
     Uses IndexFlatL2 (exact, no approximation) to avoid the duplicate-index
     problem that HNSW can produce, which corrupts downstream metrics.
+
+    Raises if GPU is not available — this rule requires a GPU and must not
+    silently fall back to CPU.
     """
     import faiss
     from scib_metrics.nearest_neighbors import NeighborsResults
 
     n_gpus = faiss.get_num_gpus()
     if n_gpus == 0:
-        logger.warning("No GPU available for FAISS, falling back to pynndescent")
-        return None
+        raise RuntimeError("FAISS requires a GPU but none is visible (n_gpus=0)")
+
+    # Probe with a real search — index_cpu_to_gpu alone succeeds even when the
+    # binary lacks kernels for this GPU's compute capability (e.g. sm_90 / H100).
+    # The actual CUDA error only surfaces during a compute call like search().
+    try:
+        _test_res = faiss.StandardGpuResources()
+        _test_idx = faiss.index_cpu_to_gpu(_test_res, 0, faiss.IndexFlatL2(2))
+        _test_idx.add(np.zeros((2, 2), dtype=np.float32))
+        _test_idx.search(np.zeros((1, 2), dtype=np.float32), 1)
+        del _test_res, _test_idx
+    except RuntimeError as e:
+        if "no kernel image" in str(e):
+            raise RuntimeError(
+                f"FAISS GPU kernels incompatible with this GPU (likely missing "
+                f"sm_90+ support). Rebuild the container with conda-forge "
+                f"faiss-gpu instead of PyPI faiss-gpu-cu12. Original error: {e}"
+            ) from e
+        raise
+    logger.info("FAISS: GPU KNN available")
 
     def faiss_knn(X: np.ndarray, k: int) -> NeighborsResults:
         X = np.ascontiguousarray(X, dtype=np.float32)
         index = faiss.IndexFlatL2(X.shape[1])
-        try:
-            res = faiss.StandardGpuResources()
-            index = faiss.index_cpu_to_gpu(res, 0, index)
-            logger.info("FAISS: using GPU KNN")
-        except (RuntimeError, AssertionError) as e:
-            logger.warning(f"FAISS GPU KNN failed ({e}), using CPU")
+        res = faiss.StandardGpuResources()
+        index = faiss.index_cpu_to_gpu(res, 0, index)
         index.add(X)
         distances_sq, indices = index.search(X, k)
         return NeighborsResults(
@@ -57,11 +74,7 @@ def _make_faiss_gpu_knn():
     return faiss_knn
 
 
-try:
-    _faiss_knn = _make_faiss_gpu_knn()
-except ImportError:
-    logger.warning("faiss not installed, falling back to pynndescent")
-    _faiss_knn = None
+_faiss_knn = _make_faiss_gpu_knn()
 
 
 # --- KMeans monkeypatch: FAISS GPU KMeans replaces JAX KMeans ---
@@ -130,7 +143,7 @@ def _kbet_per_label_parallel(X, batches, labels, alpha=0.05, diffusion_n_comps=1
         else:
             comp_size = pd.Series(labs).value_counts()
             comp_size_thresh = 3 * k0
-            idx_nonan = np.flatnonzero(np.in1d(labs, comp_size[comp_size >= comp_size_thresh].index))
+            idx_nonan = np.flatnonzero(np.isin(labs, comp_size[comp_size >= comp_size_thresh].index))
             if len(idx_nonan) / len(labs) >= 0.75:
                 conn_sub_sub = conn_graph_sub[idx_nonan, :][:, idx_nonan]
                 conn_sub_sub.sort_indices()
@@ -221,7 +234,7 @@ def run_scibmetrics_benchmarker(
                 clisi_knn=not high_cardinality,
                 nmi_ari_cluster_labels_kmeans=not high_cardinality,
             ),
-            n_jobs=-1,
+            n_jobs=1,
         )
         if _faiss_knn is not None:
             bm.prepare(neighbor_computer=_faiss_knn)
