@@ -1,0 +1,24 @@
+{
+    "scenario": "scenario_3_defaults",
+    "use_defaults": true,
+    "iqr_scale": 100,
+    "clip_value": 500,
+    "sources": [
+        "source_2",
+        "source_6",
+        "source_10"
+    ],
+    "plate_types": [
+        "COMPOUND",
+        "TARGET2"
+    ],
+    "batch_key": "Metadata_Source",
+    "label_key": "Metadata_JCP2022",
+    "eval_key": [
+        "Metadata_JCP2022"
+    ],
+    "column_norm": "Metadata_JCP2022",
+    "values_norm": [
+        "DMSO"
+    ]
+}

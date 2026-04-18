@@ -172,6 +172,41 @@
 - This is by design (Snakemake tracks input file hashes), but means script changes should be made BETWEEN scenario runs, not during.
 - Alternative: use `--rerun-triggers mtime` to only rerun on mtime changes, not content changes.
 
+### Seurat v4 vs v5 API incompatibility breaks default parameters (2026-04-07)
+- Arevalo et al. used Seurat v4.4 (`envs/seurat.yaml` pins `r-seurat=4.4`). Our containers had Seurat 5.4.0.
+- v4 uses `FindIntegrationAnchors()` + `IntegrateData()`. v5 uses `IntegrateLayers()` with different anchor-finding internals.
+- Arevalo's default params (`k_anchor=5, k_weight=100`) fail on v5 for S1 — too few anchors for the requested k_weight. Our HPO-tuned params (`k_anchor=19, k_weight=51`) work fine on v5.
+- Fix: split into `r_v4.sif` (Seurat 4.4.0 for Arevalo reproduction) and `r_v5.sif` (Seurat 5.4.0 for HPO). fastMNN also uses `r_v4.sif` since batchelor hasn't changed.
+- When building the v4 container with `remotes::install_version("Seurat", "4.4.0")`, SeuratObject 5.x gets pulled as a dep. The v4 API still works — backwards compatible.
+
+### Snakemake `--touch --forceall` resets code hash metadata (2026-04-07)
+- `touch` on files alone doesn't fix Snakemake hash mismatches — it tracks code hashes in `.snakemake/metadata/`, not just mtime.
+- `snakemake --touch --forceall` marks ALL outputs as up-to-date with current script hashes without running anything. This is the correct way to "accept" existing outputs after non-behavioral script changes.
+- Use this when script changes don't affect output (e.g., adding logging, unused args) but Snakemake wants to rerun everything.
+
+### scvi_normal (Gaussian likelihood scVI) is not viable for Cell Painting (2026-04-07)
+- scVI's `gene_likelihood="normal"` uses `exp()` for variance parameterization, which produces NaN when encoder outputs are large.
+- All 30 HPO trials on S5 crashed with `ValueError: Expected parameter loc ... to satisfy Real(), but found invalid values: tensor([[nan, ...]])`.
+- sysVI already provides a proper Gaussian VAE with softplus + clamping + nan_to_num guards. No need for scvi_normal.
+- scvi_normal removed from METHODS list (plumbing kept in scripts for potential future use).
+
+### Always use `pixi run` for snakemake, never call the binary directly (2026-04-12)
+- Calling `.pixi/envs/default/bin/snakemake` directly skips pixi's `LD_LIBRARY_PATH` setup.
+- System `/lib64/libstdc++.so.6` is too old for pixi env's ICU libs (`CXXABI_1.3.15` not found).
+- This manifests as an `ImportError` in `pycytominer → sqlite3 → dbapi2` during Snakefile parsing.
+- Fix: always use `pixi run scenario-X` or `pixi run -- bash -c 'PATH=... snakemake ...'`.
+- The overnight_pipeline.sh failure (S2/S3 defaults + S1/S2/S4 HPO all failed) was caused by this. resume_pipeline.sh uses `pixi run` and works.
+
+### Scibmetrics on 244K cells takes ~8 hours (2026-04-12)
+- `isolated_labels` metric alone is ~55 min per embedding. With 9 embeddings × 10 metrics, total run is ~8 hours on 244K cells.
+- Plan SLURM allocations accordingly: scibmetrics on S3-size scenarios needs the full run + buffer. A 24h job with ~15h of method corrections already consumed will NOT fit scibmetrics.
+- Mitigation: run corrections and scibmetrics in separate SLURM jobs, or request longer allocations (>24h partitions) upfront.
+
+### Defaults-mode methods can be dramatically slower than HPO'd (2026-04-12)
+- harmony_v1 with default `max_iter_harmony=999999` on 244K cells: ~18 min/iteration, needs ~20 iterations = ~6 hours. HPO'd harmony uses 10-50 iterations max.
+- scpoli with default params on 244K cells: early stopping never fires (LR reduction resets patience), runs full 400 epoch cap = ~6 hours. HPO'd scpoli converges in ~50 epochs.
+- This is actually useful data for the defaults-vs-HPO comparison paper figure — quantifies the compute cost of not tuning.
+
 ### TARGET2 dominates evaluation for most scenarios (2026-03-29)
 - For most scenarios, COMPOUND plate cross-source overlap is <1%. The 306 TARGET2 compounds (present in ALL sources) dominate mAP evaluation.
 - Exception: Wave 2 (84.8% overlap), C8 with bridge source S7 (6.3%), and cross-wave scenarios.

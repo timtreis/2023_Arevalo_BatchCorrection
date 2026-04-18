@@ -47,7 +47,7 @@ _AVAILABLE_MEM_MB = _get_available_mem_mb()
 #   GPU methods (scVI/scANVI/sysVI/scPoli/DESC): AnnData + model overhead → ~6×
 #   Lightweight CPU (harmony/scanorama): data + PCA + working copies → ~5×
 _MEM_MULTIPLIERS = {
-    "seurat_cca": 12, "seurat_rpca": 12, "fastmnn": 12,
+    "seurat_cca_v4": 12, "seurat_rpca_v4": 12, "seurat_cca_v5": 12, "seurat_rpca_v5": 12, "fastmnn": 12,
     "scvi_single": 6, "scvi_multi": 6, "scanvi_single": 6, "scanvi_multi": 6,
     "sysvi": 6, "scpoli": 6, "desc": 6,
     "harmony_v1": 5, "harmony_v2": 5, "scanorama": 5,
@@ -60,7 +60,7 @@ def _method_mem_mb(method):
 # This rule uses a {method} wildcard that matches all optimization outputs,
 # so snakemake will prefer it over the method-specific rules below.
 if config.get("use_defaults", False):
-    ruleorder: use_default_params > optimize_scpoli > optimize_scvi_single > optimize_scvi_multi > optimize_scanvi_single > optimize_scanvi_multi > optimize_sysvi > optimize_harmony_v1 > optimize_harmony_v2 > optimize_scanorama > optimize_desc > optimize_fastmnn > optimize_seurat_cca > optimize_seurat_rpca
+    ruleorder: use_default_params > optimize_scpoli > optimize_scvi_single > optimize_scvi_multi > optimize_scanvi_single > optimize_scanvi_multi > optimize_sysvi > optimize_harmony_v1 > optimize_harmony_v2 > optimize_scanorama > optimize_desc > optimize_fastmnn > optimize_seurat_cca_v4 > optimize_seurat_rpca_v4 > optimize_seurat_cca_v5 > optimize_seurat_rpca_v5
 
     rule use_default_params:
         input:
@@ -91,7 +91,7 @@ rule optimize_scpoli:
         mem_mb=_method_mem_mb("scpoli")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -123,7 +123,7 @@ rule optimize_scvi_single:
         mem_mb=_method_mem_mb("scvi_single")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -155,7 +155,7 @@ rule optimize_scvi_multi:
         mem_mb=_method_mem_mb("scvi_multi")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -188,7 +188,7 @@ rule optimize_scvi_normal:
         mem_mb=_method_mem_mb("scvi_normal")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -222,7 +222,7 @@ rule optimize_scanvi_single:
         mem_mb=_method_mem_mb("scanvi_single")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -255,7 +255,7 @@ rule optimize_scanvi_multi:
         mem_mb=_method_mem_mb("scanvi_multi")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -289,7 +289,7 @@ rule optimize_sysvi:
         mem_mb=_method_mem_mb("sysvi")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -319,7 +319,7 @@ rule optimize_harmony_v1:
         mem_mb=_method_mem_mb("harmony_v1")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -349,7 +349,7 @@ rule optimize_harmony_v2:
         mem_mb=_method_mem_mb("harmony_v2")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -379,7 +379,7 @@ rule optimize_scanorama:
         mem_mb=_method_mem_mb("scanorama")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -410,7 +410,7 @@ rule optimize_desc:
         mem_mb=_method_mem_mb("desc")
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -431,7 +431,7 @@ rule optimize_fastmnn:
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_fastmnn.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
@@ -451,24 +451,24 @@ rule optimize_fastmnn:
             &> '{log}'
         """
 
-rule optimize_seurat_cca:
+rule optimize_seurat_cca_v4:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/optimise_seurat.py",
-        trial_runner="scripts/run_seurat_trial.R"
+        script="scripts/optimise_seurat_v4.py",
+        trial_runner="scripts/run_seurat_trial_v4.R"
     output:
-        path="outputs/{scenario}/optimization/optuna_seurat_cca.csv"
+        path="outputs/{scenario}/optimization/optuna_seurat_cca_v4.csv"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_seurat_cca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_seurat_cca_v4.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
         trials=config["optuna_trials"],
         smoketest="--smoketest" if config["smoketest"] else "",
     resources:
-        mem_mb=_method_mem_mb("seurat_cca")
+        mem_mb=_method_mem_mb("seurat_cca_v4")
     shell:
         """
         python '{input.script}' \
@@ -482,24 +482,86 @@ rule optimize_seurat_cca:
             &> '{log}'
         """
 
-rule optimize_seurat_rpca:
+rule optimize_seurat_rpca_v4:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/optimise_seurat.py",
-        trial_runner="scripts/run_seurat_trial.R"
+        script="scripts/optimise_seurat_v4.py",
+        trial_runner="scripts/run_seurat_trial_v4.R"
     output:
-        path="outputs/{scenario}/optimization/optuna_seurat_rpca.csv"
+        path="outputs/{scenario}/optimization/optuna_seurat_rpca_v4.csv"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_seurat_rpca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_seurat_rpca_v4.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         label_key=config["label_key"],
         trials=config["optuna_trials"],
         smoketest="--smoketest" if config["smoketest"] else "",
     resources:
-        mem_mb=_method_mem_mb("seurat_rpca")
+        mem_mb=_method_mem_mb("seurat_rpca_v4")
+    shell:
+        """
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --method 'rpca' \
+            --n_trials '{params.trials}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+rule optimize_seurat_cca_v5:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/optimise_seurat_v5.py",
+        trial_runner="scripts/run_seurat_trial_v5.R"
+    output:
+        path="outputs/{scenario}/optimization/optuna_seurat_cca_v5.csv"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_seurat_cca_v5.log"
+    container:
+        "containers/r_v5.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        label_key=config["label_key"],
+        trials=config["optuna_trials"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        mem_mb=_method_mem_mb("seurat_cca_v5")
+    shell:
+        """
+        python '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --label_key '{params.label_key}' \
+            --method 'cca' \
+            --n_trials '{params.trials}' \
+            --output_path '{output.path}' \
+            {params.smoketest} \
+            &> '{log}'
+        """
+
+rule optimize_seurat_rpca_v5:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/optimise_seurat_v5.py",
+        trial_runner="scripts/run_seurat_trial_v5.R"
+    output:
+        path="outputs/{scenario}/optimization/optuna_seurat_rpca_v5.csv"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_optimize_seurat_rpca_v5.log"
+    container:
+        "containers/r_v5.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        label_key=config["label_key"],
+        trials=config["optuna_trials"],
+        smoketest="--smoketest" if config["smoketest"] else "",
+    resources:
+        mem_mb=_method_mem_mb("seurat_rpca_v5")
     shell:
         """
         python '{input.script}' \

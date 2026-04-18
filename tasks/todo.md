@@ -35,9 +35,9 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 |----------|---------|-------------|-----------|--------|
 | scenario_1 | source_6 | TARGET2 | Metadata_Batch | DONE (2026-03-28). All 15 methods, metrics, plots. PR #29 merged. |
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
-| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-04). 9 methods (R/DESC/scANVI auto-skipped). Metrics re-run with kmeans NMI/ARI disabled for high-cardinality labels. Results: scpoli #1 (0.46), sysvi #2 (0.43), harmony_v2 #3 (0.43). |
+| scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-12). 10 methods (R methods auto-skipped >100K cells). all_methods.h5ad (4.9 GB), all metrics + 3 plot PDFs. Completed on gpusrv53. |
 | scenario_4 | 5 sources | TARGET2 | Metadata_Source | DONE (2026-04-05). 14 methods (seurat_cca auto-skipped — 0 COMPLETE HPO trials). All metrics + plots. FAISS GPU incompatible with H100 sm_90, fell back to CPU. |
-| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | IN PROGRESS (2026-04-06). Overnight run on gpusrv57 (A100 80GB). scpoli correction done (400 epoch cap fix). scvi_single re-HPO done (30/30). scvi_normal HPO running (trial 1). Overnight script (PID 3354647, overnight_run_v2.sh) will chain S1-S4 after. |
+| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-11). 9 methods (no scvi_normal — dropped). All metrics + 3 plot PDFs generated on gpusrv53. |
 
 ### Tasks
 
@@ -69,16 +69,41 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [x] Add FAISS GPU→CPU fallback for H100/sm_90 — `rules/metrics.smk` detects GPU via nvidia-smi, sets `CUDA_VISIBLE_DEVICES=''` for H100/H200/B-series. Also added try/except in `run_scibmetrics_benchmarker.py` for Python-level FAISS GPU errors.
 - [x] Write reference mapping plan → `plans/reference_mapping.md` (scPoli/scArches, scVI online update, Symphony/Harmony, TARGET2 anchor ablation, evaluation strategy, paper presentation)
 - [x] S5: supergpu23 died during scpoli correction (epoch 705, early stopping never triggered). Relaunched on gpusrv57. Fixed scpoli `n_train_epochs` from 999999 → 400 in `correct_with_scpoli.py`. scpoli correction completed at 400 epoch cap. scvi_single re-HPO'd (script change triggered rerun, 30/30 done).
-- [ ] S5: scvi_normal HPO running on gpusrv57 (trial 1 of 30 at session end). Overnight script (`overnight_run_v2.sh`, PID 3354647) will auto-chain: S5 scvi_normal HPO → corrections → R failures → aggregation → metrics → plots → S1 → S2 → S3 → S4 (each with scvi_normal added).
-- [ ] After overnight: verify S5 + S1-S4 all complete with scvi_normal. Check `overnight_run_v2.log` for "ALL DONE".
-- [ ] Compare scvi_normal vs scvi_single across S1-S5 — if scvi_normal is clearly worse, drop it.
+- [x] ~~S5: scvi_normal HPO~~ — scvi_normal dropped entirely. NaN crashes in encoder (Gaussian likelihood unstable on Cell Painting features). sysVI already provides a proper Gaussian VAE.
+- [x] ~~Compare scvi_normal vs scvi_single~~ — moot, scvi_normal dropped.
+- [x] Snakemake `--touch --forceall` on S1, S2, S4 to accept existing outputs despite script hash changes (2026-04-07). Verified: "Nothing to be done" on all three.
+- [x] S3: HPO rerun with 100K subsampling — launched 2026-04-07 on supergpu30, relaunched 2026-04-10 on gpusrv53. All 10 methods re-HPO'd + 9/10 corrected. scpoli HPO+correction was the last piece (node died mid-scpoli-HPO on supergpu30, completed on gpusrv53 2026-04-11).
+- [x] S5: relaunch to finish aggregation + metrics + plots for 9 completed methods. Completed 2026-04-11 on gpusrv53. All metrics + 3 plot PDFs generated.
+- [x] Split Seurat into v4 (Arevalo's version) and v5 (current). See `plans/seurat_v4_v5_split.md`. Container `r_v4.sif` built 2026-04-07 (Seurat 4.4.0). `r.sif` renamed to `r_v5.sif`. fastMNN now uses `r_v4.sif`.
+- [ ] Re-run S1/S2/S4 HPO with new Seurat v4/v5 method names — queued in `scripts/resume_pipeline.sh` (touch existing → run missing). Blocked on S3 defaults completion AND fresh SLURM allocation. S4 already has _v4 corrections; needs _v5 HPO (30 trials × 2 methods).
+- [ ] Next session: launch fresh SLURM allocation, then `nohup bash scripts/resume_pipeline.sh` to resume (Snakemake will skip completed corrections and restart scibmetrics).
+- [x] Re-run S1/S2 defaults with v4 Seurat methods — completed 2026-04-12. S1 defaults: 15 methods including seurat_cca_v4/rpca_v4/cca_v5/rpca_v5. S2 defaults: same.
 - [x] Write annotation database comparison plan → `plans/annotation_comparison_study.md` (5 objective criteria: coverage, confidence, agreement, morphological predictivity, practical)
 - [x] Write formal annotation database analysis → `plans/annotation_database_analysis.md` (two-tier: DRH for MOA, ChEMBL bioactivity for target-level, with draft paper text)
 - [x] Create annotation comparison notebook structure → `exploration/annotation_comparison/` (README, 00_compound_registry.ipynb, 01_map_drh.ipynb prototype with standardized schema)
 - [ ] Run 00_compound_registry.ipynb + 01_map_drh.ipynb to verify prototype works
 - [ ] Create remaining database mapping notebooks (02_chembl_curated, 03_chembl_bioactivity, 04_opentargets, 05_refchemdb)
 - [ ] Create comparison notebooks (10_coverage, 11_agreement, 12_morphological_predictivity, 14_summary_figures)
-- [ ] Commit and PR scenario 3-5 results + scvi_normal + pipeline fixes (branch: feature/scenario-3-5-results)
+- [x] S3 HPO: pipeline completed 2026-04-12 09:00. scibmetrics + all_metrics + plots regenerated with scpoli included.
+- [ ] Commit and PR scenario 3-5 results + pipeline fixes (branch: feature/scenario-3-5-results)
+
+### Defaults vs HPO Comparison (paper figure)
+
+Selected scenarios: S1 (trivial), S2 (cross-source), S3 (COMPOUND plates).
+
+| Scenario | Defaults | HPO |
+|----------|----------|-----|
+| S1 | DONE (2026-04-12). 15 methods, all metrics + plots. | Needs seurat v4/v5 HPO (queued in resume_pipeline.sh). |
+| S2 | DONE (2026-04-12). 15 methods, all metrics + plots. | Needs seurat v4/v5 HPO (queued in resume_pipeline.sh). |
+| S3 | DONE (2026-04-13). 9 methods, all metrics + plots. | DONE (2026-04-12). 10 methods (R/DESC/scANVI auto-skipped). |
+
+- [x] Create `inputs/conf/scenario_2_defaults.json` and `inputs/conf/scenario_3_defaults.json`
+- [x] Symlink preprocessing files for defaults scenarios (avoid reprocessing)
+- [x] Add pixi tasks: `scenario-1-defaults`, `scenario-2-defaults`, `scenario-3-defaults`
+- [x] Run S1 defaults — completed 2026-04-12 03:17 on gpusrv53. 15 methods (all including seurat v4/v5 + fastMNN). All metrics + plots.
+- [x] Run S2 defaults — completed 2026-04-12 14:04 on gpusrv53. 15 methods. All metrics + plots.
+- [x] Run S3 defaults — completed 2026-04-13 05:27. 9 methods. mAP + scibmetrics + pivot parquet + 3 plot PDFs generated.
+- [ ] Generate side-by-side results tables (defaults vs HPO) for paper
 
 ---
 

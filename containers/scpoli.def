@@ -44,9 +44,9 @@ From: nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
     # Core scientific stack (pinned for scvi-tools 1.1.6 compat)
     python -m pip install --no-cache-dir \
-        "numpy<2" \
+        "numpy>=1.24,<2" \
         anndata \
-        pandas \
+        "pandas>=2,<3" \
         scanpy \
         pyarrow \
         scipy \

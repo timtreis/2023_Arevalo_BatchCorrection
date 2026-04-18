@@ -24,7 +24,7 @@ rule methods_combat:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -48,7 +48,7 @@ rule methods_sphering:
         values_norm="DMSO",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --method '{params.method}' \
@@ -74,7 +74,7 @@ rule methods_harmony_v1:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode 'harmony' \
             --input_data '{input.data}' \
@@ -101,7 +101,7 @@ rule methods_harmony_v2:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode 'harmony' \
             --input_data '{input.data}' \
@@ -127,7 +127,7 @@ rule methods_harmony_pca:
         smoketest="--smoketest" if config["smoketest"] else "",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode 'harmony_pca' \
             --input_data '{input.data}' \
@@ -153,7 +153,7 @@ rule methods_scanorama:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode '{params.method}' \
             --input_data '{input.data}' \
@@ -178,7 +178,7 @@ rule methods_scanorama_pca:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --mode '{params.method}' \
             --input_data '{input.data}' \
@@ -201,7 +201,7 @@ rule methods_mnn:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -227,7 +227,7 @@ rule methods_desc:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -256,7 +256,7 @@ rule methods_scvi_single:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -286,7 +286,7 @@ rule methods_scvi_multi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -317,7 +317,7 @@ rule methods_scvi_normal:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -349,7 +349,7 @@ rule methods_scanvi_single:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -382,7 +382,7 @@ rule methods_scanvi_multi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -413,7 +413,7 @@ rule methods_gaushvi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -441,7 +441,7 @@ rule methods_gaushanvi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -470,7 +470,7 @@ rule methods_sysvi:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -500,7 +500,7 @@ rule methods_scpoli:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -530,7 +530,7 @@ rule methods_scpoli_pca:
         nvidia_gpu=1
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         python '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -551,12 +551,12 @@ rule methods_fastMNN:
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_fastmnn.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -565,23 +565,23 @@ rule methods_fastMNN:
             &> '{log}'
         """
 
-rule methods_seurat_cca:
+rule methods_seurat_cca_v4:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_seurat.R",
-        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca.csv"
+        script="scripts/correct_with_seurat_v4.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca_v4.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca_v4.parquet"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca_v4.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="cca",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \
@@ -591,23 +591,75 @@ rule methods_seurat_cca:
             &> '{log}'
         """
 
-rule methods_seurat_rpca:
+rule methods_seurat_rpca_v4:
     input:
         data="outputs/{scenario}/" + config["preproc"] + ".parquet",
-        script="scripts/correct_with_seurat.R",
-        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca.csv"
+        script="scripts/correct_with_seurat_v4.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca_v4.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca_v4.parquet"
     log:
-        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca.log"
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca_v4.log"
     container:
-        "containers/r.sif"
+        "containers/r_v4.sif"
     params:
         batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
         method="rpca",
     shell:
         """
-        export PYTHONPATH=$(dirname $(pwd)):$(pwd) && \
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
+        Rscript '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --method '{params.method}' \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            &> '{log}'
+        """
+
+rule methods_seurat_cca_v5:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_seurat_v5.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_cca_v5.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_cca_v5.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_cca_v5.log"
+    container:
+        "containers/r_v5.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        method="cca",
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
+        Rscript '{input.script}' \
+            --input_data '{input.data}' \
+            --batch_key '{params.batch_key}' \
+            --method '{params.method}' \
+            --parameter_path '{input.parameter_path}' \
+            --output_path '{output.path}' \
+            &> '{log}'
+        """
+
+rule methods_seurat_rpca_v5:
+    input:
+        data="outputs/{scenario}/" + config["preproc"] + ".parquet",
+        script="scripts/correct_with_seurat_v5.R",
+        parameter_path="outputs/{scenario}/optimization/optuna_seurat_rpca_v5.csv"
+    output:
+        path="outputs/{scenario}/" + config["preproc"] + "_seurat_rpca_v5.parquet"
+    log:
+        "outputs/{scenario}/logs/" + config["preproc"] + "_correct_seurat_rpca_v5.log"
+    container:
+        "containers/r_v5.sif"
+    params:
+        batch_key=config["batch_key"] if isinstance(config["batch_key"], str) else config["batch_key"][0],
+        method="rpca",
+    shell:
+        """
+        export PYTHONPATH=$(dirname $(pwd)):$(pwd):${{PYTHONPATH:-}} && \
         Rscript '{input.script}' \
             --input_data '{input.data}' \
             --batch_key '{params.batch_key}' \

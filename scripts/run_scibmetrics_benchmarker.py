@@ -29,24 +29,41 @@ def _make_faiss_gpu_knn():
 
     Uses IndexFlatL2 (exact, no approximation) to avoid the duplicate-index
     problem that HNSW can produce, which corrupts downstream metrics.
+
+    Raises if GPU is not available — this rule requires a GPU and must not
+    silently fall back to CPU.
     """
     import faiss
     from scib_metrics.nearest_neighbors import NeighborsResults
 
     n_gpus = faiss.get_num_gpus()
     if n_gpus == 0:
-        logger.warning("No GPU available for FAISS, falling back to pynndescent")
-        return None
+        raise RuntimeError("FAISS requires a GPU but none is visible (n_gpus=0)")
+
+    # Probe with a real search — index_cpu_to_gpu alone succeeds even when the
+    # binary lacks kernels for this GPU's compute capability (e.g. sm_90 / H100).
+    # The actual CUDA error only surfaces during a compute call like search().
+    try:
+        _test_res = faiss.StandardGpuResources()
+        _test_idx = faiss.index_cpu_to_gpu(_test_res, 0, faiss.IndexFlatL2(2))
+        _test_idx.add(np.zeros((2, 2), dtype=np.float32))
+        _test_idx.search(np.zeros((1, 2), dtype=np.float32), 1)
+        del _test_res, _test_idx
+    except RuntimeError as e:
+        if "no kernel image" in str(e):
+            raise RuntimeError(
+                f"FAISS GPU kernels incompatible with this GPU (likely missing "
+                f"sm_90+ support). Rebuild the container with conda-forge "
+                f"faiss-gpu instead of PyPI faiss-gpu-cu12. Original error: {e}"
+            ) from e
+        raise
+    logger.info("FAISS: GPU KNN available")
 
     def faiss_knn(X: np.ndarray, k: int) -> NeighborsResults:
         X = np.ascontiguousarray(X, dtype=np.float32)
         index = faiss.IndexFlatL2(X.shape[1])
-        try:
-            res = faiss.StandardGpuResources()
-            index = faiss.index_cpu_to_gpu(res, 0, index)
-            logger.info("FAISS: using GPU KNN")
-        except (RuntimeError, AssertionError) as e:
-            logger.warning(f"FAISS GPU KNN failed ({e}), using CPU")
+        res = faiss.StandardGpuResources()
+        index = faiss.index_cpu_to_gpu(res, 0, index)
         index.add(X)
         distances_sq, indices = index.search(X, k)
         return NeighborsResults(
@@ -57,11 +74,7 @@ def _make_faiss_gpu_knn():
     return faiss_knn
 
 
-try:
-    _faiss_knn = _make_faiss_gpu_knn()
-except ImportError:
-    logger.warning("faiss not installed, falling back to pynndescent")
-    _faiss_knn = None
+_faiss_knn = _make_faiss_gpu_knn()
 
 
 # --- KMeans monkeypatch: FAISS GPU KMeans replaces JAX KMeans ---
@@ -83,6 +96,84 @@ def _compute_clustering_kmeans_patched(X, n_clusters):
     return labels.ravel()
 
 _nmi_ari._compute_clustering_kmeans = _compute_clustering_kmeans_patched
+
+
+# --- Parallel kBET per label ---
+# scib-metrics computes kBET by iterating over all unique labels sequentially.
+# With 82K compound labels, ~80K are trivially skipped (< 10 cells or single batch)
+# but the loop overhead is significant. Parallelizing with joblib speeds this up
+# by distributing labels across CPU cores.
+
+def _kbet_per_label_parallel(X, batches, labels, alpha=0.05, diffusion_n_comps=100, return_df=False):
+    """Drop-in replacement for kbet_per_label with joblib parallelization."""
+    from joblib import Parallel, delayed
+    from scib_metrics.metrics._kbet import kbet, diffusion_nn
+    import scipy.sparse
+
+    batches = np.asarray(pd.Categorical(batches).codes)
+    labels = np.asarray(labels)
+    conn_graph = X.knn_graph_connectivities
+    size_max = 2**31 - 1
+    unique_labels = np.unique(labels)
+
+    def _compute_one_label(clus):
+        mask = labels == clus
+        conn_graph_sub = conn_graph[mask, :][:, mask]
+        conn_graph_sub.sort_indices()
+        n_obs = conn_graph_sub.shape[0]
+        batches_sub = batches[mask]
+
+        if np.logical_or(n_obs < 10, len(np.unique(batches_sub)) == 1):
+            return clus, np.nan
+
+        quarter_mean = np.floor(np.mean(pd.Series(batches_sub).value_counts()) / 4).astype("int")
+        k0 = np.min([70, np.max([10, quarter_mean])])
+        if k0 * n_obs >= size_max:
+            k0 = np.floor(size_max / n_obs).astype("int")
+
+        n_comp, labs = scipy.sparse.csgraph.connected_components(conn_graph_sub, connection="strong")
+
+        if n_comp == 1:
+            try:
+                nc = np.min([diffusion_n_comps, n_obs - 1])
+                nn_graph_sub = diffusion_nn(conn_graph_sub, k=k0, n_comps=nc)
+                score, _, _ = kbet(nn_graph_sub, batches=batches_sub, alpha=alpha)
+            except ValueError:
+                score = 0
+        else:
+            comp_size = pd.Series(labs).value_counts()
+            comp_size_thresh = 3 * k0
+            idx_nonan = np.flatnonzero(np.isin(labs, comp_size[comp_size >= comp_size_thresh].index))
+            if len(idx_nonan) / len(labs) >= 0.75:
+                conn_sub_sub = conn_graph_sub[idx_nonan, :][:, idx_nonan]
+                conn_sub_sub.sort_indices()
+                try:
+                    nc = np.min([diffusion_n_comps, conn_sub_sub.shape[0] - 1])
+                    nn_sub_sub = diffusion_nn(conn_sub_sub, k=k0, n_comps=nc)
+                    score, _, _ = kbet(nn_sub_sub, batches=batches_sub[idx_nonan], alpha=alpha)
+                except ValueError:
+                    score = 0
+            else:
+                score = 0
+
+        return clus, score
+
+    results = Parallel(n_jobs=-1, prefer="threads")(
+        delayed(_compute_one_label)(clus) for clus in unique_labels
+    )
+
+    kbet_scores = pd.DataFrame(results, columns=["cluster", "kBET"])
+    final_score = np.nanmean(kbet_scores["kBET"])
+    if not return_df:
+        return final_score
+    else:
+        return final_score, kbet_scores
+
+import scib_metrics.metrics._kbet as _kbet_module
+_kbet_module.kbet_per_label = _kbet_per_label_parallel
+# Also patch the top-level reference used by Benchmarker (getattr(scib_metrics, metric_name))
+import scib_metrics as _scib_metrics
+_scib_metrics.kbet_per_label = _kbet_per_label_parallel
 
 
 def run_scibmetrics_benchmarker(
@@ -143,7 +234,7 @@ def run_scibmetrics_benchmarker(
                 clisi_knn=not high_cardinality,
                 nmi_ari_cluster_labels_kmeans=not high_cardinality,
             ),
-            n_jobs=-1,
+            n_jobs=1,
         )
         if _faiss_knn is not None:
             bm.prepare(neighbor_computer=_faiss_knn)

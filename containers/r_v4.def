@@ -1,0 +1,42 @@
+Bootstrap: docker
+From: rocker/r-ver:4.4.0
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # System libraries needed by arrow, igraph, and other R packages
+    apt-get update && apt-get install -y \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libglpk-dev \
+        cmake \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Use Posit Package Manager for pre-compiled Linux binaries (much faster)
+    PPM="https://packagemanager.posit.co/cran/__linux__/jammy/latest"
+
+    # CRAN packages shared by fastMNN and seurat
+    R -e "install.packages(c('arrow', 'dplyr', 'optparse', 'remotes', 'Matrix', 'matrixStats'), repos='${PPM}')"
+
+    # Bioconductor packages for fastMNN
+    R -e "install.packages('BiocManager', repos='${PPM}'); BiocManager::install(c('batchelor', 'SingleCellExperiment'), ask=FALSE)"
+
+    # Seurat v4 (matching Arevalo et al.)
+    # Install SeuratObject 4.x FIRST, then Seurat 4.4 without upgrading deps.
+    # If Seurat pulls SeuratObject 5.x, the v4 slot="data" API breaks (defunct).
+    R -e "install.packages('remotes', repos='${PPM}')"
+    R -e "remotes::install_version('SeuratObject', version='4.1.4', repos='${PPM}')"
+    R -e "remotes::install_version('Seurat', version='4.4.0', repos='${PPM}', upgrade='never')"
+
+    # Python 3 + Optuna (for HPO orchestration via subprocess)
+    apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
+    pip3 install --no-cache-dir optuna
+    ln -sf /usr/bin/python3 /usr/local/bin/python
