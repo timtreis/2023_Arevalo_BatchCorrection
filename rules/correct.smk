@@ -243,7 +243,8 @@ rule methods_scvi_single:
         script="scripts/correct_with_scvi.py",
         parameter_path="outputs/{scenario}/optimization/optuna_scvi_single.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_scvi_single.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_scvi_single.parquet",
+        model_dir=directory("outputs/{scenario}/" + config["preproc"] + "_scvi_single_model"),
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scvi_single.log"
     container:
@@ -263,6 +264,7 @@ rule methods_scvi_single:
             --label_key '{params.label_key}' \
             --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
+            --model_dir '{output.model_dir}' \
             {params.smoketest} \
             &> '{log}'
         """
@@ -487,7 +489,8 @@ rule methods_scpoli:
         script="scripts/correct_with_scpoli.py",
         parameter_path="outputs/{scenario}/optimization/optuna_scpoli.csv"
     output:
-        path="outputs/{scenario}/" + config["preproc"] + "_scpoli.parquet"
+        path="outputs/{scenario}/" + config["preproc"] + "_scpoli.parquet",
+        model_dir=directory("outputs/{scenario}/" + config["preproc"] + "_scpoli_model"),
     log:
         "outputs/{scenario}/logs/" + config["preproc"] + "_correct_scpoli.log"
     container:
@@ -507,6 +510,7 @@ rule methods_scpoli:
             --label_key '{params.label_key}' \
             --parameter_path '{input.parameter_path}' \
             --output_path '{output.path}' \
+            --model_dir '{output.model_dir}' \
             {params.smoketest} \
             &> '{log}'
         """
