@@ -1,0 +1,56 @@
+[project]
+name = "reference_mapping"
+version = "0.1.0"
+description = "Ad-hoc reference mapping experiments for JUMP-CP"
+authors = ["Tim Treis <tim.treis@outlook.de>"]
+channels = ["conda-forge", "bioconda", "pytorch", "nvidia"]
+platforms = ["linux-64"]
+
+[system-requirements]
+cuda = "12"
+
+[dependencies]
+python = "3.11.*"
+jupyterlab = "*"
+ipykernel = "*"
+jupytext = "*"
+papermill = "*"
+pandas = "*"
+numpy = "*"
+anndata = "*"
+scanpy = "*"
+scikit-learn = "*"
+matplotlib = "*"
+seaborn = "*"
+pyarrow = "*"
+pytorch = { version = "*", channel = "pytorch" }
+pytorch-cuda = { version = "12.*", channel = "nvidia" }
+
+[pypi-dependencies]
+scib-metrics = "*"
+
+[feature.scvi.dependencies]
+scvi-tools = ">=1.2"
+
+[feature.scpoli.pypi-dependencies]
+scarches = "*"
+
+[feature.symphony.dependencies]
+harmonypy = "*"
+[feature.symphony.pypi-dependencies]
+symphonypy = "*"
+
+[environments]
+scvi = ["scvi"]
+scpoli = ["scpoli"]
+symphony = ["symphony"]
+
+[tasks]
+install-kernels = """
+pixi run -e scvi python -m ipykernel install --user --name refmap-scvi --display-name 'RefMap scVI (GPU)' && \
+pixi run -e scpoli python -m ipykernel install --user --name refmap-scpoli --display-name 'RefMap scPoli (GPU)' && \
+pixi run -e symphony python -m ipykernel install --user --name refmap-symphony --display-name 'RefMap Symphony (GPU)'
+"""
+lab-symphony = "jupyter lab --no-browser --ip=0.0.0.0 --port=8888"
+lab-scvi = "jupyter lab --no-browser --ip=0.0.0.0 --port=8888"
+lab-scpoli = "jupyter lab --no-browser --ip=0.0.0.0 --port=8888"

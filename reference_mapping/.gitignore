@@ -1,0 +1,17 @@
+# Large artifacts — not committed
+data/
+models/
+papermill_runs/
+
+# Pixi
+.pixi/
+pixi.lock
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Results — only CSVs and PDFs are tracked
+results/**/*.h5ad
+results/**/*.pt
+results/**/*.pkl
+results/**/*.npz
