@@ -95,14 +95,14 @@ Selected scenarios: S1 (trivial), S2 (cross-source), S3 (COMPOUND plates).
 |----------|----------|-----|
 | S1 | DONE (2026-04-12). 15 methods, all metrics + plots. | Needs seurat v4/v5 HPO (queued in resume_pipeline.sh). |
 | S2 | DONE (2026-04-12). 15 methods, all metrics + plots. | Needs seurat v4/v5 HPO (queued in resume_pipeline.sh). |
-| S3 | IN PROGRESS (2026-04-12). harmony_v1 + scpoli slow on 244K cells. | DONE (2026-04-12). 10 methods (R/DESC/scANVI auto-skipped). |
+| S3 | DONE (2026-04-13). 9 methods, all metrics + plots. | DONE (2026-04-12). 10 methods (R/DESC/scANVI auto-skipped). |
 
 - [x] Create `inputs/conf/scenario_2_defaults.json` and `inputs/conf/scenario_3_defaults.json`
 - [x] Symlink preprocessing files for defaults scenarios (avoid reprocessing)
 - [x] Add pixi tasks: `scenario-1-defaults`, `scenario-2-defaults`, `scenario-3-defaults`
 - [x] Run S1 defaults — completed 2026-04-12 03:17 on gpusrv53. 15 methods (all including seurat v4/v5 + fastMNN). All metrics + plots.
 - [x] Run S2 defaults — completed 2026-04-12 14:04 on gpusrv53. 15 methods. All metrics + plots.
-- [ ] Run S3 defaults — PARTIAL on gpusrv53 as of 2026-04-12 21:21. All 8 corrections done (combat, sphering, scanorama, harmony_v1/v2, scpoli, scvi_single/multi, sysvi). mAP done. Scibmetrics just started `isolated_labels`. **BLOCKER**: SLURM allocation gpusrv53 (JobID 35125000) expires 2026-04-12 ~22:39 (80 min left) but scibmetrics needs ~8hr. Will get killed mid-isolated_labels. Resume needed on fresh allocation — Snakemake will pick up from existing corrections + mAP.
+- [x] Run S3 defaults — completed 2026-04-13 05:27. 9 methods. mAP + scibmetrics + pivot parquet + 3 plot PDFs generated.
 - [ ] Generate side-by-side results tables (defaults vs HPO) for paper
 
 ---
