@@ -1,5 +1,6 @@
 import logging
 import argparse
+from pathlib import Path
 import scvi
 import pandas as pd
 from preprocessing import io
@@ -16,6 +17,7 @@ def correct_with_scvi(
     multiple_covariates: bool = False,
     smoketest: bool = False,
     gene_likelihood: str = "zinb",
+    model_dir: str | None = None,
 ):
     """scVI correction"""
 
@@ -100,6 +102,10 @@ def correct_with_scvi(
 
     vae.train(**train_kwargs)
 
+    if model_dir is not None:
+        Path(model_dir).mkdir(parents=True, exist_ok=True)
+        vae.save(model_dir, overwrite=True, save_anndata=True)
+
     vals = vae.get_latent_representation()
     prefix = "scvi_normal" if gene_likelihood == "normal" else "scvi"
     features = [f"{prefix}_{i}" for i in range(vals.shape[1])]
@@ -117,6 +123,8 @@ if __name__ == "__main__":
     parser.add_argument("--smoketest", action="store_true", help="Run a smoketest with limited epochs")
     parser.add_argument("--gene_likelihood", default="zinb", choices=["zinb", "nb", "normal"],
                         help="Observation model likelihood (default: zinb). Use 'normal' for continuous features.")
+    parser.add_argument("--model_dir", default=None,
+                        help="If set, save the trained scVI model to this directory for downstream reference mapping.")
 
     args = parser.parse_args()
 
@@ -129,4 +137,5 @@ if __name__ == "__main__":
         output_path=args.output_path,
         smoketest=args.smoketest,
         gene_likelihood=args.gene_likelihood,
+        model_dir=args.model_dir,
     )

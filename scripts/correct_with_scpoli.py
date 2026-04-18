@@ -1,5 +1,6 @@
 import logging
 import argparse
+from pathlib import Path
 from typing import List, Union, Optional, Literal
 from scarches.models.scpoli import scPoli
 from preprocessing import io
@@ -19,6 +20,7 @@ def correct_with_scpoli(
     output_path: str,
     preproc: Optional[Literal["pca"]] = None,
     smoketest: bool = False,
+    model_dir: Optional[str] = None,
     **kwargs,
 ):
     """scPoli correction from https://www.nature.com/articles/s41592-023-02035-2"""
@@ -103,6 +105,11 @@ def correct_with_scpoli(
     )
 
     model.model.eval()
+
+    if model_dir is not None:
+        Path(model_dir).mkdir(parents=True, exist_ok=True)
+        model.save(model_dir, overwrite=True)
+
     vals = model.get_latent(adata, mean=True)
     features = [f"scpoli_{i}" for i in range(vals.shape[1])]
     io.merge_parquet(meta, vals, features, output_path)
@@ -135,6 +142,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--smoketest", action="store_true", help="Run a smoketest with limited epochs"
     )
+    parser.add_argument(
+        "--model_dir", default=None,
+        help="If set, save the trained scPoli model to this directory for downstream reference mapping.",
+    )
 
     args = parser.parse_args()
 
@@ -146,4 +157,5 @@ if __name__ == "__main__":
         output_path=args.output_path,
         preproc=args.preproc,
         smoketest=args.smoketest,
+        model_dir=args.model_dir,
     )
