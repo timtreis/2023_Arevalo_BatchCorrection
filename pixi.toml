@@ -54,6 +54,7 @@ scenario-4 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile 
 scenario-5 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_5.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
 scenario-wave1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_wave1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
 scenario-wave2 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_wave2.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
+scenario-source5 = "PATH=$(dirname $(which python)):$PATH snakemake outputs/scenario_source5/mad_int_featselect.parquet -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_source5.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=1 --keep-going"
 scenario-7 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_7.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=4 --keep-going"
 
 unlock-1 = "PATH=$(dirname $(which python)):$PATH snakemake -c20 --configfile inputs/conf/shared.json inputs/conf/scenario_1.json --sdm apptainer --apptainer-args=--nv --resources nvidia_gpu=2 --unlock"

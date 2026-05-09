@@ -50,7 +50,7 @@ def coarsen_labels(adata, label_key, batch_key, min_batches=SEMISUP_MIN_BATCHES)
 
     obs = adata.obs
     n_batches = obs[batch_col].nunique()
-    min_batches = max(3, min(min_batches, n_batches))
+    min_batches = max(2, min(min_batches, n_batches))
     batches_per_label = obs.groupby(label_key, observed=True)[batch_col].nunique()
     keep_labels = set(batches_per_label[batches_per_label >= min_batches].index)
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Union, Optional, Literal
 from scarches.models.scpoli import scPoli
 from preprocessing import io
-from utils import coarsen_labels
+from utils import coarsen_labels, SEMISUP_MIN_BATCHES
 import scanpy as sc
 import anndata as ad
 import pandas as pd
@@ -21,6 +21,7 @@ def correct_with_scpoli(
     preproc: Optional[Literal["pca"]] = None,
     smoketest: bool = False,
     model_dir: Optional[str] = None,
+    min_batches: int = SEMISUP_MIN_BATCHES,
     **kwargs,
 ):
     """scPoli correction from https://www.nature.com/articles/s41592-023-02035-2"""
@@ -73,7 +74,7 @@ def correct_with_scpoli(
     meta = adata.obs.reset_index(drop=True).copy()
 
     # Mark rare compounds as unlabeled for semi-supervised training
-    coarsen_labels(adata, label_key, batch_key)
+    coarsen_labels(adata, label_key, batch_key, min_batches=min_batches)
 
     if preproc == "pca":
         logger.info("Applying PCA preprocessing with Scanpy")
@@ -146,6 +147,10 @@ if __name__ == "__main__":
         "--model_dir", default=None,
         help="If set, save the trained scPoli model to this directory for downstream reference mapping.",
     )
+    parser.add_argument(
+        "--min_batches", type=int, default=SEMISUP_MIN_BATCHES,
+        help="Minimum number of distinct batches a label must appear in to be used as a supervised anchor.",
+    )
 
     args = parser.parse_args()
 
@@ -158,4 +163,5 @@ if __name__ == "__main__":
         preproc=args.preproc,
         smoketest=args.smoketest,
         model_dir=args.model_dir,
+        min_batches=args.min_batches,
     )
