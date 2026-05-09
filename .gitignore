@@ -28,3 +28,15 @@ containers/*.tmp.*
 .pixi/*
 !.pixi/config.toml
 pixi.lock
+
+# Local tooling caches
+.claude/
+.keras/
+.nv/
+
+# Large model weights (not tracked in git)
+scGPT_human/
+
+# Reference mapping ad-hoc run artifacts
+reference_mapping/papermill_runs/
+reference_mapping/logs/
