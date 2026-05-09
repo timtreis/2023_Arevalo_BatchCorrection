@@ -1,6 +1,6 @@
 # JUMP-CP Integration: Phase 1 Progress
 
-**Last updated**: 2026-04-05
+**Last updated**: 2026-05-09
 **Target**: Nature Methods, Q3 2026
 **Research plan**: `~/lustre/projects/coach/projects/jump-cp-integration/task-list.md`
 
@@ -37,7 +37,7 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 | scenario_2 | 3 sources | TARGET2 | Metadata_Source | DONE (2026-03-28). scpoli re-HPO'd with updated epochs. PR #30 merged. |
 | scenario_3 | 3 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-12). 10 methods (R methods auto-skipped >100K cells). all_methods.h5ad (4.9 GB), all metrics + 3 plot PDFs. Completed on gpusrv53. |
 | scenario_4 | 5 sources | TARGET2 | Metadata_Source | DONE (2026-04-05). 14 methods (seurat_cca auto-skipped — 0 COMPLETE HPO trials). All metrics + plots. FAISS GPU incompatible with H100 sm_90, fell back to CPU. |
-| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-11). 9 methods (no scvi_normal — dropped). All metrics + 3 plot PDFs generated on gpusrv53. |
+| scenario_5 | 5 sources | TARGET2+COMPOUND | Metadata_Source | DONE (2026-04-11). 9 methods (no scvi_normal — dropped). All metrics + 3 plot PDFs generated on gpusrv53. scPoli investigation in progress (see below). |
 
 ### Tasks
 
@@ -86,6 +86,33 @@ Run all 15 methods × 5 original scenarios × 30 HPO trials.
 - [ ] Create comparison notebooks (10_coverage, 11_agreement, 12_morphological_predictivity, 14_summary_figures)
 - [x] S3 HPO: pipeline completed 2026-04-12 09:00. scibmetrics + all_metrics + plots regenerated with scpoli included.
 - [ ] Commit and PR scenario 3-5 results + pipeline fixes (branch: feature/scenario-3-5-results)
+
+### S5 scPoli Investigation (2026-04-19) — IN PROGRESS
+
+**Root cause identified**: scPoli ranks 8/9 in S5 (overall=0.323, ilisi=0.128 worst, pcr=0.477 worst).
+Dual failure: sparse supervision (27% labeled cells with min_batches=5 → only 682 prototypes) + strong
+microscope batch effects (CV8000 + Opera Phenix + ImageXpress). S4 works (same scopes, T2-only = 99.8%
+labeled). S3 works (T2+COMPOUND, 56% labeled, but all-CV8000 so weak batch effects).
+
+**Compound cross-source distribution in S5** (bimodal — no middle ground):
+- 5 sources (min_batches=5): 682 compounds, 100K cells (27%) ← original, fails
+- 4 sources (min_batches=4): 33,326 more compounds, 135K more cells → 34K prototypes total, 64% labeled
+- 3 sources (min_batches=3): 33,699 more, 106K more cells → 67K prototypes total, 82% labeled
+- 2 sources (min_batches=2): 13,529 more, 27K more cells → 81K prototypes total, 99% labeled
+
+**Code changes made** (2026-04-19):
+- `scripts/utils.py`: `coarsen_labels` floor lowered `max(3,...)` → `max(2,...)` to allow min_batches=2
+- `scripts/correct_with_scpoli.py`: added `--min_batches` CLI arg (default: `SEMISUP_MIN_BATCHES=5`)
+
+**Experiments run** — ABANDONED 2026-05-09:
+- [x] min_batches=2 (81K prototypes): CPU-stuck 25+ min, 0% GPU → killed
+- [x] ~~min_batches=3 (67K prototypes)~~ — training started but never produced a parquet; abandoned.
+- [x] ~~min_batches=4 (34K prototypes)~~ — never launched; mb=3 outcome already inconclusive.
+
+**Outcome**: scPoli's prototype architecture does not scale beyond ~5K unique labels (lesson
+captured in `tasks/lessons.md` 2026-04-19). The `--min_batches` CLI plumbing remains in
+`scripts/correct_with_scpoli.py` for future retries, but no further experiments planned.
+Accept S5 scPoli result as-is for the paper; report as architectural limitation.
 
 ### Defaults vs HPO Comparison (paper figure)
 
@@ -281,10 +308,93 @@ Research completed 2026-03-29. Full documentation in:
 - [ ] Run wave2 scenario (3 sources, quick — good first test of new scenarios)
 - [ ] Run wave1 scenario (7 sources, large — main reference atlas candidate)
 - [x] Design F4 reference mapping experiment → `plans/reference_mapping.md` (3 methods: scPoli/scArches, scVI online update, Symphony; TARGET2 anchor ablation; 5,392 evaluable compounds)
+- [x] Scaffold reference mapping ad-hoc notebooks → `reference_mapping/notebooks/` (00-41, src/, pixi.toml). Branch: `refmap/model-save`.
+- [x] **Pivot scVI → sysVI for reference mapping** (2026-04-19): sysVI (Gaussian likelihood, VampPrior) is better suited to CellProfiler features than scVI (ZINB). SysVI has same scArches surgery API (`prepare_query_anndata`, `load_query_data`). Deleted `10_train_atlas_scvi.py/ipynb` and `11_map_scvi.py/ipynb`; replaced with `10_train_atlas_sysvi.py/ipynb` and `11_map_sysvi.py/ipynb`. Inline training uses scenario_5 sysVI Optuna CSV (best params confirmed COMPLETE).
+- [x] Fix notebook 01 `QUERY_SOURCE`/`REFERENCE_SCENARIO` mismatch (2026-04-19): source_5 is Wave 2 and doesn't appear in any existing scenario output. Changed to `QUERY_SOURCE="source_8"`, `REFERENCE_SCENARIO="scenario_5"` (sources 2,3,6,8,10). source_8 is smallest (73K cells) — good held-out query, 4 sources remain as reference.
+- [x] Verify T+/T-/T-_matched arm shapes make sense: T+(73797) = full source_8; T-(58017) = T2 compounds removed (~15K cells); T-_matched(57709) = T- minus size-matched random non-T2 compounds (308 fewer cells = natural per-compound variation). ✓
+- [x] ~~Run notebook 10 (sysVI atlas inline training)~~ — DROPPED 2026-05-09: sysVI cannot map new batches (lesson 2026-04-19). Notebooks kept as scaffolding with warning header. See `reference_mapping/notebooks/10_train_atlas_sysvi.ipynb`.
+- [x] ~~Run notebook 11 (map each query arm onto sysVI atlas)~~ — DROPPED 2026-05-09: SysVI.load_query_data hard-codes transfer_batch=False; architectural limit confirmed. Notebooks kept with warning header.
+- [x] **scPoli notebooks unblocked** (2026-04-19): patched scarches 0.6.1 installed in `.pixi/envs/scpoli/` — `from anndata import read` removed in anndata 0.10+. Fixed in 3 files: `models/base/_base.py`, `models/trvae/trvae_model.py`, `models/expimap/expimap_model.py`. `from scarches.models.scpoli import scPoli` now imports cleanly.
+- [x] **Symphony notebooks unblocked** (2026-04-19): two separate compatibility bugs fixed:
+  - harmonypy 0.2.0 changed `Z_corr` and `R` to return pre-transposed `(N,d)`/`(N,K)` arrays; symphonypy 0.2.2 expected old `(d,N)`/`(K,N)` convention. Fixed in `.pixi/envs/symphony/.../symphonypy/_utils.py` lines 37, 42, 46, 60.
+  - symphonypy `map_embedding` requires `mean`/`std` in `ref.var` (from `sc.pp.scale`). nb30 was missing the scale step. Fixed by merging scale+pca+harmony into one cell (prevents out-of-order execution). nb31 now self-heals: loads raw reference and computes mean/std on-the-fly if missing from atlas h5ad.
+  - symphonypy `map_embedding` defaults `use_genes_column="highly_variable"` — doesn't exist for CellProfiler features. Fixed: pass `use_genes_column=None` in nb31.
+- [x] Verify nb31 (Symphony mapping) runs to completion — DONE 2026-04-21. Symphony T+/T-/T-_matched all produced for source_5 query.
+- [x] Run scPoli nb20 (train atlas) + nb21 (map query) — DONE 2026-04-21. scPoli T+/T-/T-_matched all produced for source_5 query.
+- [x] Decide on nb10/11 (sysVI) — RESOLVED 2026-05-09: dropped from refmap (option b). scPoli + Symphony + scVI cover the three paradigms.
+- [x] Run notebook 40 (metrics) and 41 (plots) after mapping completes — DONE 2026-04-21. `reference_mapping/results/source_5_summary.csv` (9 rows = 3 paradigms × 3 arms) + `source_5_barplot.pdf` + `acute/source_5_plot.pdf`.
+
+### Reference Mapping Experiment Design — FINALISED (2026-04-19)
+
+Two experiments confirmed. Full plan: `reference_mapping/plans/f4_wave2_mapping.md`.
+
+**Experiment 1 — LOSO within scenario_5 (pure batch correction test)**
+- Reference: 4 scenario_5 sources (excl. source_8)
+- Query: source_8 — same JUMP compound library, ~100% compound overlap
+- Purpose: isolates batch effect from compound coverage; tests whether scPoli/Symphony can map a new source/batch when all compounds are shared
+- Status: nearly ready — query arms built, Symphony atlas + T+ mapping done; needs scPoli atlas training (nb20) + scPoli mapping (nb21 ×3) + Symphony T-/T-_matched (nb31 ×2) + metrics (nb40 ×6)
+
+**Experiment 2 — Partial compound overlap (reference mapping proper)**
+- Reference: full 5-source scenario_5
+- Query: one wave2 source (source_5, source_9, or source_11)
+- Compound overlap (from raw metadata `inputs/metadata/well.csv.gz` + `plate.csv.gz`):
+  | Source | Total cpnds | Shared w/ S5 | Overlap% | T2 shared | COMPOUND-only shared |
+  |---|---|---|---|---|---|
+  | source_5  | 32,588 | 2,409 | 7.4% | 292 | ~2,117 |
+  | source_9  | 32,145 | 1,991 | 6.2% | 292 | ~1,699 |
+  | source_11 | 32,543 | 2,410 | 7.4% | 292 | ~2,118 |
+- Purpose: tests reference mapping under realistic conditions — query profiled a DIFFERENT compound set, only ~7% shared; the ~1,700-2,100 non-TARGET2 shared compounds + 292 TARGET2 compounds provide the alignment signal
+- Status: BLOCKED on wave2 preprocessing — `outputs/scenario_wave2/mad_int_featselect.parquet` does not exist
+- Blocker resolution: run `pixi run pipeline --configfile inputs/conf/scenario_wave2.json` (or equivalent) up to the `mad_int_featselect` target; only preprocessing needed, not full HPO/correction
+
+**Key findings from design exploration (2026-04-19)**:
+- No existing preprocessed source provides meaningful partial overlap with scenario_5 COMPOUND data
+  - scenario_apricot extra sources (4,5,7,11,13): only TARGET2 plates preprocessed → 302 compounds total
+  - source_1 (wave1): 100% overlap with S5 compounds but NO TARGET2 plates → ablation is degenerate
+- Partial overlap between wave1 and wave2 goes beyond TARGET2: ~1,700-2,100 COMPOUND plate compounds shared per wave2 source (confirmed from raw well/plate metadata without preprocessing)
+- Raw metadata at `inputs/metadata/well.csv.gz` + `plate.csv.gz` is sufficient to compute compound overlap for any source combination without running the preprocessing pipeline
+- The two experiments are complementary: Exp 1 isolates batch effect, Exp 2 tests generalisation to new compound space
+
+**scPoli setup for Exp 2 (partial overlap)**:
+- Pass `labeled_indices` = indices of shared compound wells only (the ~2K shared compounds)
+- Set `PRETRAIN_EPOCHS = 0` — encoder already pretrained, only condition embedding needs to train
+- Wave2-only compound wells are unlabeled — they map via the learned batch embedding without prototype pull
+
+**Evaluation metric fix (both experiments)**:
+- Within-query `compound_asw` is wrong: 98% of COMPOUND plate query wells are singletons per compound (1 well/compound/source) → silhouette undefined
+- Use cross-source compound precision@k instead: for each query well, fraction of top-k reference wells with same compound ID — works for singletons
+- nb40 already updated to use `batch_asw` on joint embedding + `kbet`/`ilisi` via pynndescent; `compound_asw` on query-alone to be replaced with precision@k
+
+- [ ] Run Exp 1: nb20 (scPoli atlas) + nb21 ×3 (T+/T-/T-_matched) + nb31 ×2 + nb40 ×6 — Exp 1 (source_8 LOSO) **incomplete**; resume after Exp 2 PR merges.
+- [x] ~~Run wave2 preprocessing (unblocks Exp 2)~~ — circumvented 2026-04-21 by using scenario_5 feature space directly via `01_prepare_query_arms_s5feats.ipynb` + `inputs/conf/scenario_source5.json` + new pixi task `scenario-source5`.
+- [x] Run Exp 2 (source_5 query → scenario_5 reference) — DONE 2026-04-21 across scPoli, Symphony, scVI × T+/T-/T-_matched. Results in `reference_mapping/results/`.
+
+### Exp 2 results (source_5 → scenario_5) — 2026-04-21
+
+Headline numbers from `reference_mapping/results/source_5_summary.csv`:
+
+| paradigm | batch_asw | iLISI | precision@10 | compound_asw |
+|----------|----------:|------:|-------------:|-------------:|
+| scPoli   | **0.904** | 0.066 | **1.85e-4**  | **0.379**    |
+| Symphony | 0.887     | 0.195 | 1.52e-4      | 0.348        |
+| scVI     | 0.818     | **0.357** | 2.31e-5  | 0.195        |
+
+**T+/T-/T-_matched arms differ by <1% across all metrics for every paradigm** — TARGET2 anchor
+ablation appears null on this query. Needs confirmation on a second query source (source_9
+or source_11) before drawing paper-level conclusions.
+
+**Interpretation**:
+- scPoli wins compound_asw (compound coherence) and batch_asw (batch mixing in joint embedding)
+- scVI wins iLISI (local mixing) but loses badly on precision@10 (10× lower than scPoli/Symphony)
+- Symphony is the middle-ground: good batch mixing, decent compound recovery, simplest method
+
+### Reference mapping next steps (post-PR)
+
+- [ ] Confirm null-ablation finding on a second query source (source_9 or source_11)
+- [ ] Resume Exp 1 (source_8 LOSO within scenario_5): blocked items are scVI/scPoli atlas training; Symphony already mapped T+
+- [ ] Decide whether the null TARGET2 anchor result is publication-worthy or whether the ablation needs a stronger compound-overlap test design
+
 - [ ] Create C4 scenario config (Wave 1 reference atlas: S2,S3,S6,S8,S10,S15, 384-well only)
-- [ ] Run C4 + wave2 preprocessing
-- [ ] Implement reference mapping scripts: `map_with_scpoli.py`, `map_with_scvi.py`, `map_with_symphony.py`
-- [ ] Run F4 reference mapping experiment (C4→wave2, 3 methods × 2-3 variants)
 - [ ] Run TARGET2 anchor ablation (3 conditions: full, no-T2, T2-ref-only)
 
 ---

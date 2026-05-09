@@ -207,7 +207,92 @@
 - scpoli with default params on 244K cells: early stopping never fires (LR reduction resets patience), runs full 400 epoch cap = ~6 hours. HPO'd scpoli converges in ~50 epochs.
 - This is actually useful data for the defaults-vs-HPO comparison paper figure — quantifies the compute cost of not tuning.
 
+### source_N scenario number ≠ source in scenario_N (2026-04-19)
+- `source_5` is a Wave 2 source (sources 5, 9, 11). It does NOT appear in `scenario_5` (which has sources 2, 3, 6, 8, 10 — a C1 benchmark scenario).
+- Scenario numbers and source numbers are independent. Always verify actual source membership by reading the parquet or config JSON before writing QUERY_SOURCE/REFERENCE_SCENARIO params.
+- Quick check: `pd.read_parquet(pq, columns=["Metadata_Source"])["Metadata_Source"].value_counts()`.
+
+### sysVI is the correct VAE method for CellProfiler features, not scVI (2026-04-19)
+- scVI uses ZINB/NB likelihood, designed for integer count data (UMI counts). CellProfiler features are continuous, can be negative, and are not counts — ZINB is theoretically wrong.
+- sysVI uses a Gaussian VAE with proper variance parameterization (softplus + clamping), which is correct for continuous morphological features. scPoli uses MSE (equivalent).
+- scvi_normal (Gaussian scVI) was tested and crashed — NaN in encoder due to `exp()` variance parameterization. sysVI avoids this with better numerical guards.
+- sysVI has the same scArches surgery API: `SysVI.prepare_query_anndata()` + `SysVI.load_query_data()`, so reference mapping works identically to scVI.
+- No X shift needed for sysVI (unlike scVI where `X -= X.min()` is needed for ZINB).
+
+### scPoli prototype count breaks initialization beyond ~5K unique labels (2026-04-19)
+- scPoli uses a prototype embedding for every unique label (compound). In S5 with min_batches=5, that's 682 prototypes — works fine, starts GPU training within minutes.
+- Lowering min_batches to 3 or 2 adds 67K or 81K prototypes. The process hangs at 98% CPU / 0% GPU for 25+ minutes and never starts training. GPU memory stays at baseline (~447 MiB).
+- Root cause is likely scPoli's DataLoader/label-encoder setup being O(n_labels²) or similar. A dense one-hot tensor of shape (370K × 81K) = 30B entries would explain both the memory and time.
+- The S5 compound distribution is bimodal: 682 in all 5 sources, then 33K+ in 4 sources, 33K+ in 3 sources — no middle ground. Any min_batches < 5 jumps to 34K+ prototypes.
+- scPoli was designed for scRNA-seq with 10–50 cell types. It degrades non-linearly past ~1K unique labels.
+
+### scPoli S5 failure = supervision sparsity × batch effect strength (2026-04-19)
+- S5 has 3 different microscope types (CV8000 confocal, Opera Phenix confocal, ImageXpress widefield) — strongest batch effects in the benchmark.
+- With min_batches=5, only 27% of cells are labeled (682 compounds in all 5 sources). The 73% unlabeled COMPOUND cells get no prototype loss and cannot be anchored across batches by the VAE alone.
+- S4 (same microscopes, T2-only = 99.8% labeled): scPoli ranks 3/15. S3 (T2+COMPOUND, 56% labeled, all-CV8000): scPoli ranks 1/9. Both dimensions must be present to cause failure.
+- Harmony v1 (rank 1 in S5, 0.383 overall) is fully unsupervised — iteratively minimizes batch-driven PCA variance for every cell, directly correcting the microscope-type signal without needing labels.
+- The labeled fraction and prototype count are in tension: more labeled cells requires fewer prototype anchors to fail (but too many anchors breaks scPoli's initialization).
+
+### SysVI cannot do reference mapping with new (unseen) batch categories (2026-04-19)
+- `SysVI.load_query_data` hard-codes `transfer_batch=False`, which triggers a check requiring all query batches to exist in the reference registry. New batches raise `ValueError`.
+- This is architectural: SysVI learns system-specific (batch-specific) transformations at train time; there is no surgery path for new batches.
+- scVI (SCVI) DOES support new batches via surgery (`transfer_batch=True` default). scPoli is purpose-built for reference mapping with new batches.
+- For refmap experiments: use scPoli or Symphony for true new-batch projection. SysVI is only appropriate when all batches are seen at train time (standard batch correction).
+
+### scarches 0.6.1 incompatible with anndata >= 0.10 (2026-04-19)
+- `anndata.read` was removed in anndata 0.10. scarches 0.6.1 still does `from anndata import AnnData, read` in 3 files: `models/base/_base.py`, `models/trvae/trvae_model.py`, `models/expimap/expimap_model.py`.
+- Fix: patch each file with `try: from anndata import read \n except ImportError: from anndata.io import read_h5ad as read`.
+- This is a known upstream issue; the fix must be applied to the installed package until scarches releases a fix.
+
+### harmonypy 0.2.0 changed Z_corr and R to pre-transposed convention (2026-04-19)
+- Old harmonypy: `Z_corr` was `(d, N)`, `R` was `(K, N)`. symphonypy 0.2.2 was written for this.
+- harmonypy 0.2.0: `Z_corr` property returns `(N, d)` and `R` returns `(N, K)` (already transposed). symphonypy's extra `.T` gives `(d, N)` and `(K, N)` in obsm — wrong shapes.
+- Fixed in `.pixi/envs/symphony/lib/.../symphonypy/_utils.py`: removed `.T` from `Z_corr`, added `.T` to `R` in matrix products, changed `sum(axis=1)→sum(axis=0)` for `Nr`, stored `R.T` in uns.
+- Check harmonypy version before using symphonypy: 0.1.x uses old convention, 0.2.x uses new convention.
+
+### symphonypy map_embedding requires sc.pp.scale to be run on reference before saving (2026-04-19)
+- `sp.tl.map_embedding` reads `ref.var["mean"]` and `ref.var["std"]` to z-score the query before PCA projection. These are written by `sc.pp.scale(ref, zero_center=True)`.
+- Must run scale BEFORE pca BEFORE harmony — the order matters. Merge all three into one notebook cell to prevent out-of-order execution in a live kernel.
+- If atlas h5ad was saved without scale stats, nb31 can self-heal: load the raw reference from query_arms/, run scale, inject mean/std into `ref.var` before calling `map_embedding`.
+- symphonypy `map_embedding` also defaults `use_genes_column="highly_variable"` — pass `use_genes_column=None` for non-genomic data (CellProfiler features have no HVG selection).
+
 ### TARGET2 dominates evaluation for most scenarios (2026-03-29)
 - For most scenarios, COMPOUND plate cross-source overlap is <1%. The 306 TARGET2 compounds (present in ALL sources) dominate mAP evaluation.
 - Exception: Wave 2 (84.8% overlap), C8 with bridge source S7 (6.3%), and cross-wave scenarios.
 - This means T2-only vs T2+C scenarios have similar evaluation power. The main value of COMPOUND plates is ML breadth, not evaluation strength.
+
+### Raw metadata is sufficient to compute compound overlap before preprocessing (2026-04-19)
+- `inputs/metadata/well.csv.gz` (Source, Plate, Well, JCP2022) joined with `inputs/metadata/plate.csv.gz` (Source, Plate, PlateType) gives compound membership per source per plate type
+- Use this to check overlap for any source combination without running the preprocessing pipeline
+- Pattern: `meta = wells.merge(plates[["Metadata_Source","Metadata_PlateType","Metadata_Plate"]], on=["Metadata_Source","Metadata_Plate"])`
+
+### Wave2 and scenario_5 share ~2K non-TARGET2 COMPOUND plate compounds per source (2026-04-19)
+- From raw metadata: source_5 shares 2,409 compounds with S5 (7.4%), source_9 shares 1,991 (6.2%), source_11 shares 2,410 (7.4%)
+- ~292 of those are TARGET2; the remaining ~1,700-2,100 are COMPOUND plate compounds
+- This partial overlap is what makes wave2 the correct choice for a reference mapping experiment with genuine compound coverage gaps
+- No preprocessed source (apricot extras: TARGET2-only; source_1: 100% overlap, no T2) provides meaningful partial overlap — wave2 preprocessing is required
+
+### Within scenario_5, LOSO gives ~100% compound overlap — this is expected (2026-04-19)
+- All 5 scenario_5 sources profiled the same JUMP-CP compound library; LOSO tests pure batch correction, not compound generalisation
+- source_10/source_2/source_8: 100% overlap; source_6: 98.2% (1,040 source_6-only); source_3: 99.6%
+- All 5 sources have both COMPOUND and TARGET2 plate types → T+/T- ablation is valid for any held-out source
+
+### JUMP-CP data is well-level aggregated profiles, not single-cell (2026-04-19)
+- Each row in the preprocessed parquets = one plate well (aggregated CellProfiler features across all cells in that well)
+- Confirmed: `observations_per_well == 1.0` for scenario_5 reference
+- Consequence: "cells per compound" = wells per compound, typically 1-4 for COMPOUND plates, 54-300+ for TARGET2 compounds across all sources
+- This means compound ASW computed on query-alone is usually undefined (98% of COMPOUND plate compounds have 1 well in a single source)
+- Correct evaluation metric: cross-source compound precision@k in the joint reference+query embedding
+
+### TARGET2 compounds have vastly more wells than COMPOUND plate compounds (2026-04-19)
+- In scenario_5 reference: TARGET2 compounds have median 64 wells each (across 4 sources), DMSO has 37,852 wells
+- COMPOUND plate compounds: median 3 wells total, 1 well in a single source is common
+- This makes TARGET2 the high-quality prototype anchor tier and COMPOUND plates the noisy tier in scPoli
+- The T+/T- ablation tests whether the high-quality TARGET2 anchors are needed — removing them leaves only 1-well COMPOUND plate prototypes
+
+### scPoli with compound identity as cell_type_keys: valid but at unusual scale (2026-04-19)
+- Using Metadata_JCP2022 as cell_type_keys creates ~57K prototypes (one per compound) — far beyond the 50-200 designed for scRNA-seq
+- Prototype distance computation is O(batch_size × n_prototypes) per forward pass — feasible (256 × 57K × 4B ≈ 58MB per batch)
+- Key limitation: prototypes are noisy for 1-well compounds; the loss landscape is flat for those
+- Reference prototypes are frozen during query fine-tuning; only the new batch/condition embedding trains
+- Passing labeled_indices = shared compound wells focuses prototype loss where signal exists; wave2-only compounds should be unlabeled
