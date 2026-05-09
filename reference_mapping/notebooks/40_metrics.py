@@ -6,6 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: RefMap Symphony (GPU)
 #     language: python
@@ -15,11 +16,10 @@
 # %% [markdown]
 # # 40 — Metrics for one (query, arm, paradigm)
 #
-# Computes compound mAP, MOA mAP, kBET, iLISI on the mapped query embedding,
+# Computes compound ASW, batch ASW, kBET, iLISI on the mapped query embedding,
 # masking out:
 #   - Target2 compounds (always)
-#   - swap_in compounds (only when arm == tminus_matched, to ensure a
-#     fair compound population for the comparison)
+#   - swap_in compounds (only when arm == tminus_matched, for a fair comparison)
 #
 # Appends one row to `results/acute/<query_source>_metrics.csv`.
 
@@ -27,6 +27,7 @@
 from pathlib import Path
 import sys
 import pandas as pd
+import numpy as np
 import anndata as ad
 
 sys.path.insert(0, str(Path.cwd().parent))
@@ -37,14 +38,16 @@ from src import metrics as m
 
 # %% tags=["parameters"]
 # --- PARAMETERS (overridden by papermill) ---
-QUERY_SOURCE = "source_5"
+QUERY_SOURCE = "source_8"
 T_ARM = "tplus"
-PARADIGM = "symphony"  # symphony | scvi | scpoli
+PARADIGM = "symphony"  # symphony | scpoli | scvi
+REFERENCE_ATLAS = "excl_source_8"   # "excl_{source}" for Exp1; "scenario_5_full" for Exp2
 COMPOUND_COL = "Metadata_JCP2022"
-MOA_COL = "Metadata_MoA"  # verify; may be Metadata_target / Metadata_pert_iname
 BATCH_KEY = "Metadata_Source"
+N_NEIGHBORS = 50
 # --- END PARAMETERS ---
 
+# %%
 EMBEDDING_KEY = f"X_{PARADIGM}_mapped"
 
 # %% [markdown]
@@ -63,43 +66,72 @@ eval_query = query[eval_mask].copy()
 print(f"evaluating on {eval_query.shape[0]}/{query.shape[0]} cells")
 
 # %% [markdown]
-# ## Per-cell metrics on mapped embedding
+# ## Compound coherence (ASW over compound identity)
 
 # %%
 emb = eval_query.obsm[EMBEDDING_KEY]
-compound_map = m.compound_map(emb, eval_query.obs[COMPOUND_COL])
-moa_map_val = m.moa_map(emb, eval_query.obs[MOA_COL])
-print(f"compound_map={compound_map:.4f}  moa_map={moa_map_val:.4f}")
+compound_asw_val = m.compound_asw(emb, eval_query.obs[COMPOUND_COL])
+print(f"compound_asw={compound_asw_val:.4f}")
 
 # %% [markdown]
 # ## Joint reference + query batch-mixing metrics
 
 # %%
-# Find the matching reference embedding next to the atlas.
-atlas_dir = MODEL_OUT / f"{PARADIGM}_atlas_excl_{QUERY_SOURCE}"
+atlas_dir = MODEL_OUT / f"{PARADIGM}_atlas_{REFERENCE_ATLAS}"
 ref_h5ad = atlas_dir / "reference.h5ad"
+
+kbet = ilisi = batch_asw_val = precision_at_k = float("nan")
+
 if ref_h5ad.exists():
     ref = ad.read_h5ad(ref_h5ad)
-    # Use the same key on the ref. Symphony stores X_pca_harmony; scVI/scPoli
-    # need an explicit ref-embedding key — skip joint metrics if missing.
     ref_key_candidates = [EMBEDDING_KEY, f"X_{PARADIGM}_ref", "X_pca_harmony"]
     ref_key = next((k for k in ref_key_candidates if k in ref.obsm), None)
+
     if ref_key is None:
-        kbet = ilisi = float("nan")
-        print(f"reference embedding missing; skip kBET/iLISI for {PARADIGM}")
+        print(f"reference embedding missing; skip batch metrics for {PARADIGM}")
     else:
+        # Build joint embedding: reference + eval query
         joint = ad.concat(
             [
-                ad.AnnData(X=ref.obsm[ref_key], obs=ref.obs[[BATCH_KEY]]),
-                ad.AnnData(X=eval_query.obsm[EMBEDDING_KEY], obs=eval_query.obs[[BATCH_KEY]]),
+                ad.AnnData(
+                    X=ref.obsm[ref_key],
+                    obs=ref.obs[[BATCH_KEY, COMPOUND_COL]],
+                ),
+                ad.AnnData(
+                    X=eval_query.obsm[EMBEDDING_KEY],
+                    obs=eval_query.obs[[BATCH_KEY, COMPOUND_COL]],
+                ),
             ]
         )
-        kbet = m.kbet_score(joint.X, joint.obs[BATCH_KEY])
-        ilisi = m.ilisi_score(joint.X, joint.obs[BATCH_KEY])
+        joint_emb = joint.X if isinstance(joint.X, np.ndarray) else joint.X.toarray()
+
+        # Batch ASW (no kNN needed)
+        batch_asw_val = m.batch_asw(
+            joint_emb, joint.obs[COMPOUND_COL], joint.obs[BATCH_KEY]
+        )
+        print(f"batch_asw={batch_asw_val:.4f}")
+
+        # kBET and iLISI via pre-computed kNN
+        from scib_metrics.nearest_neighbors import pynndescent
+        nn = pynndescent(joint_emb, n_neighbors=N_NEIGHBORS)
+        kbet = m.kbet_score(nn, joint.obs[BATCH_KEY])
+        ilisi = m.ilisi_score(nn, joint.obs[BATCH_KEY])
         print(f"kBET={kbet:.4f}  iLISI={ilisi:.4f}")
+
+        # Cross-source compound precision@k
+        from sklearn.neighbors import NearestNeighbors
+        K = 10
+        ref_emb_arr = ref.obsm[ref_key]
+        query_emb_arr = eval_query.obsm[EMBEDDING_KEY]
+        nbrs = NearestNeighbors(n_neighbors=K, metric="cosine").fit(ref_emb_arr)
+        _, nn_indices = nbrs.kneighbors(query_emb_arr)
+        ref_cpds = ref.obs[COMPOUND_COL].astype(str).values
+        query_cpds = eval_query.obs[COMPOUND_COL].astype(str).values
+        match = ref_cpds[nn_indices] == query_cpds[:, None]
+        precision_at_k = float(match.mean())
+        print(f"precision@{K}={precision_at_k:.4f}")
 else:
-    kbet = ilisi = float("nan")
-    print(f"no reference at {ref_h5ad}; skip kBET/iLISI")
+    print(f"no reference at {ref_h5ad}; skip batch metrics")
 
 # %% [markdown]
 # ## Append to CSV
@@ -110,10 +142,11 @@ row = {
     "t_arm": T_ARM,
     "paradigm": PARADIGM,
     "n_cells_eval": int(eval_query.shape[0]),
-    "compound_map": compound_map,
-    "moa_map": moa_map_val,
+    "compound_asw": compound_asw_val,
+    "batch_asw": batch_asw_val,
     "kbet": kbet,
     "ilisi": ilisi,
+    "precision_at_10": precision_at_k,
 }
 
 csv_path = RESULTS_OUT / "acute" / f"{QUERY_SOURCE}_metrics.csv"

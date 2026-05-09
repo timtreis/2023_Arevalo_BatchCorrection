@@ -6,6 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: RefMap scVI (GPU)
 #     language: python
@@ -15,82 +16,101 @@
 # %% [markdown]
 # # 10 — scVI atlas
 #
-# Two paths:
-#
-# 1. **Pipeline path (preferred)**: re-run the patched
-#    `methods_scvi_single` rule against `scenario_<refscenario>` so the model
-#    artifact lands at `outputs/<scenario>/mad_int_featselect_scvi_single_model/`.
-#    This notebook then symlinks it into `models/`.
-#
-# 2. **Notebook path (fallback)**: re-train inline using the HPO best params,
-#    skipping the Snakemake plumbing.
-#
-# Path 1 is faster per re-run and matches the figures shown in the paper, so
-# default to it. Path 2 is for when the pipeline isn't conveniently runnable.
+# Train a scVI reference atlas on scenario_5 (all 5 sources).
+# Uses HPO best params from `optuna_scvi_single.csv`.
+# Saves model + reference latent embedding so nb11 can map queries
+# and nb40 can compute joint reference+query metrics.
 
 # %%
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path.cwd().parent))
-from src.paths import MODEL_OUT, scenario_model_dir, scenario_input_parquet, scenario_optuna_csv
+from src.paths import MODEL_OUT, scenario_input_parquet, scenario_optuna_csv
 
 # %% [markdown]
 # ## Parameters
 
 # %%
-QUERY_SOURCE = "source_5"
-REFERENCE_SCENARIO = "scenario_5"  # the scenario whose pipeline output we use
-ATLAS_NAME = f"scvi_atlas_excl_{QUERY_SOURCE}"
+QUERY_SOURCE = ""          # empty = use all sources; "source_8" = exclude that source
+REFERENCE_SCENARIO = "scenario_5"
+BATCH_KEY = "Metadata_Source"
+LABEL_KEY = "Metadata_JCP2022"
+
+ATLAS_NAME = (
+    f"scvi_atlas_{REFERENCE_SCENARIO}_full"
+    if not QUERY_SOURCE
+    else f"scvi_atlas_excl_{QUERY_SOURCE}"
+)
+atlas_dir = MODEL_OUT / ATLAS_NAME
+atlas_dir.mkdir(parents=True, exist_ok=True)
 
 # %% [markdown]
-# ## Path 1 — symlink the pipeline-trained model
-#
-# Run AFTER `snakemake methods_scvi_single` has produced the model dir.
+# ## Load reference data
 
 # %%
-src_model_dir = scenario_model_dir(REFERENCE_SCENARIO, "scvi_single")
-dst = MODEL_OUT / ATLAS_NAME
+from src.data_io import load_parquet_as_anndata, split_by_source
+import json
 
-if src_model_dir.exists():
-    if dst.exists() or dst.is_symlink():
-        dst.unlink()
-    dst.symlink_to(src_model_dir)
-    print(f"symlinked {dst} -> {src_model_dir}")
-else:
-    print(f"NO pipeline model at {src_model_dir} — falling through to inline training")
+adata = load_parquet_as_anndata(scenario_input_parquet(REFERENCE_SCENARIO))
+ref = adata if not QUERY_SOURCE else split_by_source(adata, BATCH_KEY, QUERY_SOURCE)[0]
+print(f"reference: {ref.shape}")
+
+# HPO uses gene_likelihood="zinb" (default), which requires non-negative data.
+# Shift X so the minimum is 0 and save the offset for query notebooks.
+X_min = float(ref.X.min())
+ref.X = ref.X - X_min
+(atlas_dir / "X_min.json").write_text(json.dumps({"X_min": X_min}))
+print(f"shifted X by {X_min:.4f} (saved to atlas_dir/X_min.json)")
 
 # %% [markdown]
-# ## Path 2 — inline training (fallback)
-#
-# Only runs if `dst` does not exist after Path 1.
+# ## Load HPO best params
 
 # %%
-if not dst.exists():
-    import scvi
-    import pandas as pd
-    from src.data_io import load_parquet_as_anndata, split_by_source
+import pandas as pd
 
-    SOURCE_COL = "Metadata_Source"
-    BATCH_KEY = "Metadata_Source"
+params = pd.read_csv(scenario_optuna_csv(REFERENCE_SCENARIO, "scvi_single"))
+p = params.sort_values("total", ascending=False).iloc[0].to_dict()
+print("Best HPO params:")
+for k, v in p.items():
+    if k.startswith("params_"):
+        print(f"  {k}: {v}")
 
-    adata = load_parquet_as_anndata(scenario_input_parquet(REFERENCE_SCENARIO))
-    ref, _ = split_by_source(adata, SOURCE_COL, QUERY_SOURCE)
+# %% [markdown]
+# ## Train scVI atlas
 
-    params = pd.read_csv(scenario_optuna_csv(REFERENCE_SCENARIO, "scvi_single"))
-    p = params.sort_values("total", ascending=False).iloc[0].to_dict()
+# %%
+from scvi.model import SCVI
 
-    # Pipeline shifts to non-negative for ZINB; mirror that here.
-    ref.X -= ref.X.min()
-    scvi.model.SCVI.setup_anndata(ref, batch_key=BATCH_KEY)
-    vae = scvi.model.SCVI(
-        ref,
-        n_hidden=int(p["params_n_hidden"]),
-        n_latent=int(p["params_n_latent"]),
-        n_layers=int(p["params_n_layers"]),
-        dropout_rate=float(p["params_dropout_rate"]),
-        gene_likelihood="zinb",
-    )
-    vae.train(max_epochs=400, early_stopping=True)
-    vae.save(str(dst), overwrite=True, save_anndata=True)
-    print(f"inline-trained scVI atlas to {dst}")
+SCVI.setup_anndata(ref, batch_key=BATCH_KEY)
+
+model = SCVI(
+    ref,
+    n_hidden=int(p["params_n_hidden"]),
+    n_latent=int(p["params_n_latent"]),
+    n_layers=int(p["params_n_layers"]),
+    dropout_rate=float(p["params_dropout_rate"]),
+    gene_likelihood="zinb",
+)
+model.train(
+    max_epochs=400,
+    early_stopping=True,
+    early_stopping_monitor="elbo_validation",
+)
+model.save(str(atlas_dir), overwrite=True)
+print(f"saved scVI atlas to {atlas_dir}")
+
+# %% [markdown]
+# ## Save reference embedding for nb40 joint metrics
+
+# %%
+import anndata as ad
+import numpy as np
+
+ref_emb = model.get_latent_representation()
+print(f"reference embedding shape: {ref_emb.shape}")
+
+ref_out = ad.AnnData(obs=ref.obs[[BATCH_KEY, LABEL_KEY]])
+ref_out.obsm["X_scvi_mapped"] = ref_emb
+ref_out.write_h5ad(atlas_dir / "reference.h5ad")
+print(f"saved reference embedding to {atlas_dir / 'reference.h5ad'}")

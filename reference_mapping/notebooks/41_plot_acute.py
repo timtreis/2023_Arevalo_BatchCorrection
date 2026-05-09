@@ -6,6 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: RefMap Symphony (GPU)
 #     language: python
@@ -28,8 +29,10 @@ import seaborn as sns
 sys.path.insert(0, str(Path.cwd().parent))
 from src.paths import RESULTS_OUT
 
+# %% tags=["parameters"]
+QUERY_SOURCE = "source_8"
+
 # %%
-QUERY_SOURCE = "source_5"
 csv_path = RESULTS_OUT / "acute" / f"{QUERY_SOURCE}_metrics.csv"
 df = pd.read_csv(csv_path)
 df
@@ -44,12 +47,23 @@ df
 paradigm_order = ["symphony", "scvi", "scpoli"]
 arm_order = ["tplus", "tminus_matched", "tminus"]
 
-fig, axes = plt.subplots(1, 2, figsize=(11, 4))
-for ax, metric, title in zip(
-    axes,
-    ["compound_map", "moa_map"],
-    ["Compound mAP", "MOA mAP"],
-):
+metrics = [
+    ("batch_asw",       "Batch ASW"),
+    ("kbet",            "kBET"),
+    ("ilisi",           "iLISI"),
+    ("precision_at_10", "Precision@10"),
+    ("compound_asw",    "Compound ASW"),
+]
+
+# Filter to paradigms/arms that are present to avoid seaborn warnings on missing groups
+df = df[df["paradigm"].isin(paradigm_order) & df["t_arm"].isin(arm_order)]
+
+fig, axes = plt.subplots(1, len(metrics), figsize=(4 * len(metrics), 4))
+for ax, (metric, title) in zip(axes, metrics):
+    present = df[metric].notna().any()
+    if not present:
+        ax.set_visible(False)
+        continue
     sns.barplot(
         data=df,
         x="paradigm",
@@ -58,14 +72,18 @@ for ax, metric, title in zip(
         order=paradigm_order,
         hue_order=arm_order,
         ax=ax,
+        errwidth=1.2,
     )
     ax.set_title(title)
     ax.set_xlabel("")
-    ax.legend(title="Query arm", loc="best", frameon=False)
+    if ax is not axes[0]:
+        ax.get_legend().remove()
+    else:
+        ax.legend(title="Query arm", loc="best", frameon=False, fontsize=8)
 
-fig.suptitle(f"Reference mapping — query={QUERY_SOURCE}")
+fig.suptitle(f"Reference mapping — query={QUERY_SOURCE}", fontsize=11)
 fig.tight_layout()
 
 out_path = RESULTS_OUT / "acute" / f"{QUERY_SOURCE}_plot.pdf"
-fig.savefig(out_path)
+fig.savefig(out_path, bbox_inches="tight")
 print(f"wrote {out_path}")

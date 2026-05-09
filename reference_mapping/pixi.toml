@@ -3,7 +3,7 @@ name = "reference_mapping"
 version = "0.1.0"
 description = "Ad-hoc reference mapping experiments for JUMP-CP"
 authors = ["Tim Treis <tim.treis@outlook.de>"]
-channels = ["conda-forge", "bioconda", "pytorch", "nvidia"]
+channels = ["conda-forge", "bioconda"]
 platforms = ["linux-64"]
 
 [system-requirements]
@@ -23,8 +23,8 @@ scikit-learn = "*"
 matplotlib = "*"
 seaborn = "*"
 pyarrow = "*"
-pytorch = { version = "*", channel = "pytorch" }
-pytorch-cuda = { version = "12.*", channel = "nvidia" }
+# conda-forge ships pytorch with CUDA bundled — no separate pytorch-cuda metapackage needed.
+pytorch-gpu = "*"
 
 [pypi-dependencies]
 scib-metrics = "*"

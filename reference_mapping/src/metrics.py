@@ -1,41 +1,35 @@
 """Thin wrappers around scib-metrics for the reference-mapping notebooks.
 
-We keep the wrappers small so the metrics notebook stays readable. Any
-heavy preprocessing (neighbours, joint embeddings) lives in the notebook,
-not here.
-
-NOTE: The scib-metrics API has churned across versions. The wrappers below
-target the >=0.5 layout (`scib_metrics.mean_average_precision`, `kbet`,
-`ilisi_graph`). If install resolves an older version, adjust here.
+Uses scib_metrics >=0.5 API. Functions that require pre-computed kNN
+accept a NeighborsResults object from scib_metrics.nearest_neighbors.
 """
 from __future__ import annotations
 import numpy as np
 import scib_metrics
+from scib_metrics.nearest_neighbors import NeighborsResults
 
 
-def compound_map(embedding: np.ndarray, compound_ids) -> float:
-    """mAP over compound identities — high = same-compound cells cluster."""
+def compound_asw(embedding: np.ndarray, compound_ids) -> float:
+    """ASW over compound identities — higher = same-compound cells cluster."""
     return float(
-        scib_metrics.mean_average_precision(embedding, np.asarray(compound_ids))
+        scib_metrics.silhouette_label(embedding, np.asarray(compound_ids))
     )
 
 
-def moa_map(embedding: np.ndarray, moa_ids) -> float:
-    """mAP over mechanism-of-action labels — high = MOA-coherent embedding."""
+def batch_asw(embedding: np.ndarray, compound_ids, batch_ids) -> float:
+    """Batch ASW — higher = better batch mixing within compound groups."""
     return float(
-        scib_metrics.mean_average_precision(embedding, np.asarray(moa_ids))
+        scib_metrics.silhouette_batch(
+            embedding, np.asarray(compound_ids), np.asarray(batch_ids)
+        )
     )
 
 
-def kbet_score(embedding: np.ndarray, batch_labels) -> float:
-    """kBET acceptance rate on `embedding` against `batch_labels`."""
-    return float(
-        scib_metrics.kbet(embedding, np.asarray(batch_labels))
-    )
+def kbet_score(nn: NeighborsResults, batch_labels) -> float:
+    """kBET acceptance rate — higher = better batch mixing."""
+    return float(scib_metrics.kbet(nn, np.asarray(batch_labels))[0])
 
 
-def ilisi_score(embedding: np.ndarray, batch_labels) -> float:
-    """iLISI on `embedding` — higher = better mixing across batches."""
-    return float(
-        scib_metrics.ilisi_graph(embedding, np.asarray(batch_labels))
-    )
+def ilisi_score(nn: NeighborsResults, batch_labels) -> float:
+    """iLISI — higher = better batch mixing."""
+    return float(scib_metrics.ilisi_knn(nn, np.asarray(batch_labels)))
